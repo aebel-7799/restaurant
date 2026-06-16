@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as KitchenRouteImport } from './routes/kitchen'
+import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as FoodIdRouteImport } from './routes/food.$id'
@@ -33,6 +36,16 @@ const OrdersRoute = OrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KitchenRoute = KitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryRoute = DeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -41,6 +54,11 @@ const CartRoute = CartRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -61,8 +79,11 @@ const FoodIdRoute = FoodIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/delivery': typeof DeliveryRoute
+  '/kitchen': typeof KitchenRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -71,8 +92,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/delivery': typeof DeliveryRoute
+  '/kitchen': typeof KitchenRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -82,8 +106,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
+  '/delivery': typeof DeliveryRoute
+  '/kitchen': typeof KitchenRoute
   '/orders': typeof OrdersRouteWithChildren
   '/profile': typeof ProfileRoute
   '/search': typeof SearchRoute
@@ -94,8 +121,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/cart'
+    | '/delivery'
+    | '/kitchen'
     | '/orders'
     | '/profile'
     | '/search'
@@ -104,8 +134,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/auth'
     | '/cart'
+    | '/delivery'
+    | '/kitchen'
     | '/orders'
     | '/profile'
     | '/search'
@@ -114,8 +147,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/auth'
     | '/cart'
+    | '/delivery'
+    | '/kitchen'
     | '/orders'
     | '/profile'
     | '/search'
@@ -125,8 +161,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CartRoute: typeof CartRoute
+  DeliveryRoute: typeof DeliveryRoute
+  KitchenRoute: typeof KitchenRoute
   OrdersRoute: typeof OrdersRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   SearchRoute: typeof SearchRoute
@@ -156,6 +195,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kitchen': {
+      id: '/kitchen'
+      path: '/kitchen'
+      fullPath: '/kitchen'
+      preLoaderRoute: typeof KitchenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery': {
+      id: '/delivery'
+      path: '/delivery'
+      fullPath: '/delivery'
+      preLoaderRoute: typeof DeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cart': {
       id: '/cart'
       path: '/cart'
@@ -168,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -207,8 +267,11 @@ const OrdersRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CartRoute: CartRoute,
+  DeliveryRoute: DeliveryRoute,
+  KitchenRoute: KitchenRoute,
   OrdersRoute: OrdersRouteWithChildren,
   ProfileRoute: ProfileRoute,
   SearchRoute: SearchRoute,

@@ -1,18 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Heart, LogOut, MapPin, User as UserIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Heart, LogOut, MapPin, User as UserIcon, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/bottom-nav";
 import { formatMoney } from "@/lib/restaurant.config";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — Our Kitchen" }] }),
   component: ProfilePage,
 });
 
+
 function ProfilePage() {
   const { user, signOut, loading } = useAuth();
+  const [demoRole, setDemoRole] = useState<string>("customer");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("grillgo_demo_role") || "customer";
+      setDemoRole(saved);
+    }
+  }, []);
+
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -75,6 +87,58 @@ function ProfilePage() {
           <MapPin className="h-5 w-5 text-brand" />
           <span className="flex-1 font-medium">My Orders</span>
         </Link>
+      </section>
+
+      {/* Demo Roles & Portals */}
+      <section className="mt-4 px-5">
+        <div className="rounded-2xl bg-card p-4 shadow-card space-y-4">
+          <div className="flex items-center gap-2 text-brand font-semibold text-sm">
+            <ShieldAlert className="h-4 w-4" />
+            <span>Portals & Demo Roles</span>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground block mb-2 uppercase tracking-wider">Simulate Role</label>
+            <div className="grid grid-cols-4 gap-1 p-0.5 bg-muted rounded-xl">
+              {(["customer", "admin", "kitchen", "rider"] as const).map((r) => {
+                const active = demoRole === r;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => {
+                      setDemoRole(r);
+                      localStorage.setItem("grillgo_demo_role", r);
+                      toast.success(`Role switched to ${r}`);
+                    }}
+                    className={`py-1.5 text-[10px] font-bold rounded-lg capitalize transition-all ${
+                      active ? "bg-brand text-brand-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          <div className="grid grid-cols-3 gap-2">
+            <Link to="/admin" className="flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border border-border bg-background hover:bg-brand-soft transition-all">
+              <span className="text-lg">🛠️</span>
+              <span className="text-[10px] font-bold mt-1">Admin</span>
+            </Link>
+            <Link to="/kitchen" className="flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border border-border bg-background hover:bg-brand-soft transition-all">
+              <span className="text-lg">🍳</span>
+              <span className="text-[10px] font-bold mt-1">Kitchen</span>
+            </Link>
+            <Link to="/delivery" className="flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border border-border bg-background hover:bg-brand-soft transition-all">
+              <span className="text-lg">🚴</span>
+              <span className="text-[10px] font-bold mt-1">Rider</span>
+            </Link>
+          </div>
+        </div>
       </section>
 
       <section className="mt-5 px-5">
