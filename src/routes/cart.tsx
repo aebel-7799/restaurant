@@ -132,6 +132,16 @@ function CartPage() {
     onSuccess: (res) => {
       clear();
       toast.success("Order placed!");
+      if (!user) {
+        try {
+          const raw = localStorage.getItem("grillgo.guest_orders");
+          const list = raw ? JSON.parse(raw) : [];
+          list.push(res.id);
+          localStorage.setItem("grillgo.guest_orders", JSON.stringify(list));
+        } catch (e) {
+          console.error("Error saving guest order to localStorage:", e);
+        }
+      }
       navigate({ to: "/orders/$id", params: { id: res.id } });
     },
     onError: (e: Error) => toast.error(e.message),

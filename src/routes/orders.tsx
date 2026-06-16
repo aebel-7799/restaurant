@@ -14,19 +14,37 @@ export const Route = createFileRoute("/orders")({
   component: OrdersPage,
 });
 
+import { useEffect, useState } from "react";
+
 function OrdersPage() {
   const { user } = useAuth();
   const { add } = useCart();
+  const [guestOrderIds, setGuestOrderIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      try {
+        const raw = localStorage.getItem("grillgo.guest_orders");
+        if (raw) {
+          setGuestOrderIds(JSON.parse(raw));
+        }
+      } catch (e) {}
+    }
+  }, [user]);
 
   const getUserOrdersFn = useServerFn(getUserOrders);
 
+  const queryKey = user ? ["orders", user.id] : ["orders", "guest", guestOrderIds];
+  const queryParam = user ? user.id : guestOrderIds;
+  const isEnabled = !!user || guestOrderIds.length > 0;
+
   const { data: orders, isLoading } = useQuery({
-    queryKey: ["orders", user?.id],
-    enabled: !!user,
-    queryFn: () => getUserOrdersFn({ data: user!.id }),
+    queryKey,
+    enabled: isEnabled,
+    queryFn: () => getUserOrdersFn({ data: queryParam }),
   });
 
-  if (!user) {
+  if (!user && guestOrderIds.length === 0) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
