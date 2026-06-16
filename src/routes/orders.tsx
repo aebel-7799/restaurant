@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getUserOrders } from "@/lib/db.functions";
 import { Receipt, RotateCcw } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { useCart } from "@/hooks/use-cart";
@@ -17,18 +18,12 @@ function OrdersPage() {
   const { user } = useAuth();
   const { add } = useCart();
 
+  const getUserOrdersFn = useServerFn(getUserOrders);
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ["orders", user?.id],
     enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id,order_number,total,order_status,created_at,order_items(name,quantity,price,image,food_id)")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => getUserOrdersFn({ data: user!.id }),
   });
 
   if (!user) {

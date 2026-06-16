@@ -2,13 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { MapPin, Search as SearchIcon, Star, Plus, ShoppingBag, Heart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getFoodItems } from "@/lib/db.functions";
 import { BottomNav } from "@/components/bottom-nav";
 import { WhatsAppFab } from "@/components/whatsapp-fab";
 import { useCart } from "@/hooks/use-cart";
 import { formatMoney } from "@/lib/restaurant.config";
 import { toast } from "sonner";
-import { MOCK_CATEGORIES, MOCK_FOOD_ITEMS } from "@/lib/mock-food";
+import { MOCK_CATEGORIES } from "@/lib/mock-food";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,27 +27,21 @@ function HomePage() {
   const [category, setCategory] = useState<string | null>(null);
   const { add, count } = useCart();
 
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => MOCK_CATEGORIES,
+  const getFoodItemsFn = useServerFn(getFoodItems);
+
+  const { data: foodItems = [] } = useQuery({
+    queryKey: ["foodItems"],
+    queryFn: () => getFoodItemsFn({ data: "all" }),
   });
 
-  const { data: popular } = useQuery({
-    queryKey: ["food", "popular", category],
-    queryFn: () => {
-      return MOCK_FOOD_ITEMS.filter((f) => {
-        if (category && f.category_id !== category) return false;
-        return true;
-      });
-    },
+  const categories = MOCK_CATEGORIES;
+
+  const popular = foodItems.filter((f) => {
+    if (category && f.category_id !== category) return false;
+    return true;
   });
 
-  const { data: recommended } = useQuery({
-    queryKey: ["food", "recommended"],
-    queryFn: () => {
-      return MOCK_FOOD_ITEMS.filter((f) => f.is_recommended);
-    },
-  });
+  const recommended = foodItems.filter((f) => f.is_recommended);
 
   const displayCategories = [
     { id: null, name: "Meal" }, // "All" maps to "Meal" to keep the mockup's visual style

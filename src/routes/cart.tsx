@@ -5,7 +5,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { validateCouponServer } from "@/lib/db.functions";
 import { placeOrder } from "@/lib/orders.functions";
 import { formatMoney, RESTAURANT, deliveryFeeFor } from "@/lib/restaurant.config";
 import { QtyStepper } from "@/components/qty-stepper";
@@ -62,15 +62,11 @@ function CartPage() {
   const discount = appliedCoupon?.discount ?? 0;
   const total = Math.max(0, subtotal + deliveryFee + taxes - discount);
 
+  const validateCouponFn = useServerFn(validateCouponServer);
   const applyCoupon = async () => {
     const code = coupon.trim().toUpperCase();
     if (!code) return;
-    const { data } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("code", code)
-      .eq("active", true)
-      .maybeSingle();
+    const data = await validateCouponFn({ data: { code } });
     if (!data) return toast.error("Invalid coupon");
     if (Number(data.min_order_amount) > subtotal)
       return toast.error(`Minimum order ${formatMoney(Number(data.min_order_amount))}`);

@@ -15,7 +15,13 @@ import {
   RotateCcw,
   Sparkles,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  getAdminRiders,
+  getAdminOrders,
+  claimRiderJobServer,
+  updateOrderStatusServer,
+} from "@/lib/db.functions";
 import { formatMoney } from "@/lib/restaurant.config";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,20 +37,18 @@ function RiderPortalPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>("available");
-  const [activeRiderId, setActiveRiderId] = useState<string>("");
+  const [activeRiderId, setActiveRiderId] = useState<string>("rider-1");
   const [onlineStatus, setOnlineStatus] = useState(true);
+
+  const getAdminRidersFn = useServerFn(getAdminRiders);
+  const getAdminOrdersFn = useServerFn(getAdminOrders);
+  const claimRiderJobFn = useServerFn(claimRiderJobServer);
+  const updateOrderStatusFn = useServerFn(updateOrderStatusServer);
 
   // 1. Fetch available riders for demo identity selection
   const { data: riders } = useQuery({
     queryKey: ["delivery_riders_list"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("delivery_partners")
-        .select("*")
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => getAdminRidersFn(),
   });
 
   // Automatically select a rider or read from localStorage
@@ -65,28 +69,15 @@ function RiderPortalPage() {
   // 2. Fetch available orders (status 'packed' or 'assigned' but no assignment/assigned to current rider)
   const { data: orders, isLoading: loadingOrders } = useQuery({
     queryKey: ["rider_orders", activeRiderId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          order_items(*),
-          delivery_assignments(
-            rider_id
-          )
-        `)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-    refetchInterval: 10000,
+    queryFn: () => getAdminOrdersFn(),
+    refetchInterval: 5000,
   });
 
   // Filter orders by categories
-  // "Available": Packed orders with no assignment, OR assigned orders where the assignment rider matches activeRiderId but status is not delivered/cancelled
+  // "Available": Packed orders with no assignment
   const availableOrders = orders?.filter((o) => {
     const isPacked = o.order_status === "packed";
-    const hasNoRider = !o.delivery_assignments || o.delivery_assignments.length === 0;
+    const hasNoRider = !o.delivery_assignments;
     return isPacked && hasNoRider;
   }) ?? [];
 
@@ -110,30 +101,7 @@ function RiderPortalPage() {
     }
 
     try {
-      // Create/Update delivery assignment
-      const { data: existing } = await supabase
-        .from("delivery_assignments")
-        .select("id")
-        .eq("order_id", orderId)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from("delivery_assignments")
-          .update({ rider_id: activeRiderId })
-          .eq("order_id", orderId);
-      } else {
-        await supabase
-          .from("delivery_assignments")
-          .insert({ order_id: orderId, rider_id: activeRiderId });
-      }
-
-      // Update status to 'assigned'
-      await supabase
-        .from("orders")
-        .update({ order_status: "assigned" })
-        .eq("id", orderId);
-
+      await claimRiderJobFn({ data: { orderId, riderId: activeRiderId } });
       toast.success("Job claimed successfully!");
       setActiveSubTab("my-jobs");
       queryClient.invalidateQueries({ queryKey: ["rider_orders"] });
@@ -144,17 +112,7 @@ function RiderPortalPage() {
 
   const handleUpdateStatus = async (orderId: string, status: "out_for_delivery" | "delivered") => {
     try {
-      const updates: any = { order_status: status };
-      if (status === "delivered") {
-        updates.payment_status = "paid"; // cash on delivery is completed
-      }
-
-      const { error } = await supabase
-        .from("orders")
-        .update(updates)
-        .eq("id", orderId);
-
-      if (error) throw error;
+      await updateOrderStatusFn({ data: { orderId, status } });
       toast.success(`Order status updated to ${status.replace(/_/g, " ")}`);
       queryClient.invalidateQueries({ queryKey: ["rider_orders"] });
     } catch (e: any) {

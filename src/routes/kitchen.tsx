@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Clock, Flame, PackageCheck, AlertCircle, ChefHat, BellRing } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getKitchenOrders, updateOrderStatusServer } from "@/lib/db.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/kitchen")({
@@ -13,20 +14,16 @@ export const Route = createFileRoute("/kitchen")({
 function KitchenPage() {
   const queryClient = useQueryClient();
   const [enableSound, setEnableSound] = useState(true);
+  const [lastOrderIds, setLastOrderIds] = useState<string[]>([]);
+
+  const getKitchenOrdersFn = useServerFn(getKitchenOrders);
+  const updateOrderStatusFn = useServerFn(updateOrderStatusServer);
 
   // Fetch only active cooking/preparation orders
   const { data: orders, isLoading } = useQuery({
     queryKey: ["kitchen_orders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .in("order_status", ["received", "preparing", "packed"])
-        .order("created_at", { ascending: true }); // oldest first
-      if (error) throw error;
-      return data ?? [];
-    },
-    refetchInterval: 15000, // backup polling
+    queryFn: () => getKitchenOrdersFn(),
+    refetchInterval: 5000,
   });
 
   const playChime = () => {
@@ -52,40 +49,25 @@ function KitchenPage() {
     }
   };
 
-  // Realtime subscription for incoming orders
+  // Local detection for new incoming orders
   useEffect(() => {
-    const ch = supabase
-      .channel("kitchen_channel")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        (payload) => {
-          queryClient.invalidateQueries({ queryKey: ["kitchen_orders"] });
-          
-          // Play sound alert for new orders
-          if (payload.eventType === "INSERT") {
-            playChime();
-            toast.info("🛎️ New order received in the kitchen!", {
-              description: `Order #${(payload.new as any).order_number} has been placed.`,
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [queryClient, enableSound]);
+    if (!orders) return;
+    const currentIds = orders.map((o) => o.id);
+    const newOrders = orders.filter((o) => o.order_status === "received" && !lastOrderIds.includes(o.id));
+    if (newOrders.length > 0 && lastOrderIds.length > 0) {
+      playChime();
+      newOrders.forEach((o) => {
+        toast.info("🛎️ New order received in the kitchen!", {
+          description: `Order #${o.order_number} has been placed.`,
+        });
+      });
+    }
+    setLastOrderIds(currentIds);
+  }, [orders]);
 
   const updateStatus = async (orderId: string, status: "preparing" | "packed" | "cancelled") => {
     try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ order_status: status })
-        .eq("id", orderId);
-
-      if (error) throw error;
+      await updateOrderStatusFn({ data: { orderId, status } });
       toast.success(`Order status updated to ${status}`);
       queryClient.invalidateQueries({ queryKey: ["kitchen_orders"] });
     } catch (e: any) {

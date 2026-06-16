@@ -2,12 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, Search as SearchIcon, Plus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getFoodItems } from "@/lib/db.functions";
 import { BottomNav } from "@/components/bottom-nav";
 import { useCart } from "@/hooks/use-cart";
 import { formatMoney } from "@/lib/restaurant.config";
 import { toast } from "sonner";
-import { MOCK_CATEGORIES, MOCK_FOOD_ITEMS } from "@/lib/mock-food";
+import { MOCK_CATEGORIES } from "@/lib/mock-food";
 
 export const Route = createFileRoute("/search")({
   head: () => ({ meta: [{ title: "Search — Our Kitchen" }] }),
@@ -19,20 +20,22 @@ function SearchPage() {
   const [cat, setCat] = useState<string | null>(null);
   const { add } = useCart();
 
+  const getFoodItemsFn = useServerFn(getFoodItems);
+
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: () => MOCK_CATEGORIES,
   });
 
-  const { data: results } = useQuery({
-    queryKey: ["search", q, cat],
-    queryFn: () => {
-      return MOCK_FOOD_ITEMS.filter((f) => {
-        if (q.trim() && !f.name.toLowerCase().includes(q.trim().toLowerCase())) return false;
-        if (cat && f.category_id !== cat) return false;
-        return f.available;
-      });
-    },
+  const { data: foodItems = [] } = useQuery({
+    queryKey: ["foodItems"],
+    queryFn: () => getFoodItemsFn({ data: "all" }),
+  });
+
+  const results = foodItems.filter((f) => {
+    if (q.trim() && !f.name.toLowerCase().includes(q.trim().toLowerCase())) return false;
+    if (cat && f.category_id !== cat) return false;
+    return f.available;
   });
 
   return (

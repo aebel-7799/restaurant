@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Heart, LogOut, MapPin, User as UserIcon, ShieldAlert } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getFavoritesServer } from "@/lib/db.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/bottom-nav";
 import { formatMoney } from "@/lib/restaurant.config";
@@ -25,26 +26,19 @@ function ProfilePage() {
     }
   }, []);
 
+  const profile = user ? {
+    name: user.user_metadata.name || user.email.split("@")[0],
+    email: user.email,
+    avatar_url: `https://api.dicebear.com/9.x/initials/svg?seed=${user.user_metadata.name || user.email}`,
+    phone: ""
+  } : null;
 
-  const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).maybeSingle();
-      return data;
-    },
-  });
+  const getFavoritesFn = useServerFn(getFavoritesServer);
 
   const { data: favs } = useQuery({
     queryKey: ["favs", user?.id],
     enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("favorites")
-        .select("food_id, food_items(id,name,image,price)")
-        .eq("user_id", user!.id);
-      return data ?? [];
-    },
+    queryFn: () => getFavoritesFn({ data: user!.id }),
   });
 
   if (loading) return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;

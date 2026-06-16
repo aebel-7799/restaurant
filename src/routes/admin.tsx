@@ -18,7 +18,18 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  getAdminOrders,
+  getFoodItems,
+  getAdminRiders,
+  updateOrderStatusServer,
+  assignRiderServer,
+  toggleFoodAvailableServer,
+  toggleFoodRecommendServer,
+  saveFoodPriceServer,
+  createRiderServer,
+} from "@/lib/db.functions";
 import { formatMoney } from "@/lib/restaurant.config";
 import { toast } from "sonner";
 
@@ -33,48 +44,30 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
   const queryClient = useQueryClient();
 
+  const getAdminOrdersFn = useServerFn(getAdminOrders);
+  const getFoodItemsFn = useServerFn(getFoodItems);
+  const getAdminRidersFn = useServerFn(getAdminRiders);
+  const updateOrderStatusFn = useServerFn(updateOrderStatusServer);
+  const assignRiderFn = useServerFn(assignRiderServer);
+  const toggleFoodAvailableFn = useServerFn(toggleFoodAvailableServer);
+  const toggleFoodRecommendFn = useServerFn(toggleFoodRecommendServer);
+  const saveFoodPriceFn = useServerFn(saveFoodPriceServer);
+  const createRiderFn = useServerFn(createRiderServer);
+
   // Queries
   const { data: orders, isLoading: loadingOrders } = useQuery({
     queryKey: ["admin_orders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          order_items(*),
-          delivery_assignments(
-            rider_id,
-            delivery_partners(name)
-          )
-        `)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => getAdminOrdersFn(),
   });
 
   const { data: foodItems, isLoading: loadingFood } = useQuery({
     queryKey: ["admin_food"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("food_items")
-        .select("*")
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => getFoodItemsFn({ data: "all" }),
   });
 
   const { data: riders, isLoading: loadingRiders } = useQuery({
     queryKey: ["admin_riders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("delivery_partners")
-        .select("*")
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () => getAdminRidersFn(),
   });
 
   // State for editing menu items
@@ -87,12 +80,7 @@ function AdminPage() {
   // Database actions
   const handleUpdateOrderStatus = async (orderId: string, status: any) => {
     try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ order_status: status })
-        .eq("id", orderId);
-
-      if (error) throw error;
+      await updateOrderStatusFn({ data: { orderId, status } });
       toast.success(`Order status updated to ${status.replace(/_/g, " ")}`);
       queryClient.invalidateQueries({ queryKey: ["admin_orders"] });
     } catch (e: any) {
@@ -102,32 +90,7 @@ function AdminPage() {
 
   const handleAssignRider = async (orderId: string, riderId: string) => {
     try {
-      // Check if assignment already exists
-      const { data: existing } = await supabase
-        .from("delivery_assignments")
-        .select("id")
-        .eq("order_id", orderId)
-        .maybeSingle();
-
-      if (existing) {
-        const { error } = await supabase
-          .from("delivery_assignments")
-          .update({ rider_id: riderId })
-          .eq("order_id", orderId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("delivery_assignments")
-          .insert({ order_id: orderId, rider_id: riderId });
-        if (error) throw error;
-      }
-
-      // Also update status to 'assigned'
-      await supabase
-        .from("orders")
-        .update({ order_status: "assigned" })
-        .eq("id", orderId);
-
+      await assignRiderFn({ data: { orderId, riderId } });
       toast.success("Rider assigned successfully");
       setSelectedOrderId(null);
       queryClient.invalidateQueries({ queryKey: ["admin_orders"] });
@@ -138,11 +101,7 @@ function AdminPage() {
 
   const handleToggleFoodAvailable = async (itemId: string, currentVal: boolean) => {
     try {
-      const { error } = await supabase
-        .from("food_items")
-        .update({ available: !currentVal })
-        .eq("id", itemId);
-      if (error) throw error;
+      await toggleFoodAvailableFn({ data: { itemId, available: !currentVal } });
       toast.success("Food availability updated");
       queryClient.invalidateQueries({ queryKey: ["admin_food"] });
     } catch (e: any) {
@@ -152,11 +111,7 @@ function AdminPage() {
 
   const handleToggleFoodRecommend = async (itemId: string, currentVal: boolean) => {
     try {
-      const { error } = await supabase
-        .from("food_items")
-        .update({ is_recommended: !currentVal })
-        .eq("id", itemId);
-      if (error) throw error;
+      await toggleFoodRecommendFn({ data: { itemId, recommend: !currentVal } });
       toast.success("Recommendation status updated");
       queryClient.invalidateQueries({ queryKey: ["admin_food"] });
     } catch (e: any) {
@@ -172,11 +127,7 @@ function AdminPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from("food_items")
-        .update({ price: parsed })
-        .eq("id", itemId);
-      if (error) throw error;
+      await saveFoodPriceFn({ data: { itemId, price: parsed } });
       toast.success("Price updated successfully");
       setEditingItemId(null);
       queryClient.invalidateQueries({ queryKey: ["admin_food"] });
@@ -194,12 +145,7 @@ function AdminPage() {
     if (!name) return;
 
     try {
-      const { error } = await supabase.from("delivery_partners").insert({
-        name,
-        phone,
-        status: "online",
-      });
-      if (error) throw error;
+      await createRiderFn({ data: { name, phone } });
       toast.success("Rider registered successfully");
       e.currentTarget.reset();
       queryClient.invalidateQueries({ queryKey: ["admin_riders"] });

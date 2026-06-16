@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { X, HelpCircle, Phone, MessageSquare, Check, Bike, ChefHat } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { getOrderDetails, updateOrderLocationServer } from "@/lib/db.functions";
 import { formatMoney, RESTAURANT } from "@/lib/restaurant.config";
 import { WhatsAppFab } from "@/components/whatsapp-fab";
 
@@ -35,30 +36,14 @@ function TrackPage() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
 
+  const getOrderDetailsFn = useServerFn(getOrderDetails);
+  const updateOrderLocationFn = useServerFn(updateOrderLocationServer);
+
   const { data: order } = useQuery({
     queryKey: ["order", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: 15000,
+    queryFn: () => getOrderDetailsFn({ data: id }),
+    refetchInterval: 5000,
   });
-
-  // Realtime updates
-  useEffect(() => {
-    const ch = supabase
-      .channel(`order:${id}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["order", id] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [id, qc]);
 
   // Live Location Watch (Updates customer location to database in real-time)
   useEffect(() => {
@@ -68,13 +53,9 @@ function TrackPage() {
       const watchId = navigator.geolocation.watchPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
-          // Dynamically update coordinates in orders table
-          const { error } = await supabase
-            .from("orders")
-            .update({ latitude, longitude })
-            .eq("id", order.id);
-          
-          if (error) {
+          try {
+            await updateOrderLocationFn({ data: { orderId: order.id, latitude, longitude } });
+          } catch (error) {
             console.error("Error updating customer live location:", error);
           }
         },
