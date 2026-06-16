@@ -1,10 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { sql } from "./db.server";
 
+// Helper function to handle wrapping of input object from client proxy
+function unwrapInput<T>(input: T | { data: T }): T {
+  if (input && typeof input === "object" && "data" in input) {
+    return (input as any).data;
+  }
+  return input as T;
+}
+
 // 1. Fetch menu items, optionally filtered by category_id
 export const getFoodItems = createServerFn({ method: "GET" })
-  .validator((categoryId?: string) => categoryId)
-  .handler(async ({ input: categoryId }) => {
+  .validator((input: any) => input)
+  .handler(async ({ input }) => {
+    const categoryId = unwrapInput(input);
     if (categoryId && categoryId !== "all") {
       return await sql`
         SELECT * FROM food_items 
@@ -20,8 +29,9 @@ export const getFoodItems = createServerFn({ method: "GET" })
 
 // 2. Fetch details for a single food item
 export const getFoodItem = createServerFn({ method: "GET" })
-  .validator((id: string) => id)
-  .handler(async ({ input: id }) => {
+  .validator((input: any) => input)
+  .handler(async ({ input }) => {
+    const id = unwrapInput(input);
     const results = await sql`
       SELECT * FROM food_items 
       WHERE id = ${id}
@@ -31,8 +41,9 @@ export const getFoodItem = createServerFn({ method: "GET" })
 
 // 3. Fetch orders for a user
 export const getUserOrders = createServerFn({ method: "GET" })
-  .validator((userId: string) => userId)
-  .handler(async ({ input: userId }) => {
+  .validator((input: any) => input)
+  .handler(async ({ input }) => {
+    const userId = unwrapInput(input);
     const orders = await sql`
       SELECT * FROM orders 
       WHERE user_id = ${userId}
@@ -52,8 +63,9 @@ export const getUserOrders = createServerFn({ method: "GET" })
 
 // 4. Fetch details for a single order (tracking view)
 export const getOrderDetails = createServerFn({ method: "GET" })
-  .validator((orderId: string) => orderId)
-  .handler(async ({ input: orderId }) => {
+  .validator((input: any) => input)
+  .handler(async ({ input }) => {
+    const orderId = unwrapInput(input);
     const orders = await sql`
       SELECT * FROM orders 
       WHERE id = ${orderId}
@@ -93,36 +105,38 @@ export const getOrderDetails = createServerFn({ method: "GET" })
 
 // 5. Update order status
 export const updateOrderStatusServer = createServerFn({ method: "POST" })
-  .validator((input: { orderId: string; status: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     await sql`
       UPDATE orders 
-      SET order_status = ${input.status}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.orderId}
+      SET order_status = ${data.status}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${data.orderId}
     `;
     return { success: true };
   });
 
 // 6. Assign rider to order
 export const assignRiderServer = createServerFn({ method: "POST" })
-  .validator((input: { orderId: string; riderId: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     // Check if assignment exists
     const existing = await sql`
       SELECT id FROM delivery_assignments 
-      WHERE order_id = ${input.orderId}
+      WHERE order_id = ${data.orderId}
     `;
 
     if (existing[0]) {
       await sql`
         UPDATE delivery_assignments 
-        SET rider_id = ${input.riderId}
-        WHERE order_id = ${input.orderId}
+        SET rider_id = ${data.riderId}
+        WHERE order_id = ${data.orderId}
       `;
     } else {
       await sql`
         INSERT INTO delivery_assignments (order_id, rider_id)
-        VALUES (${input.orderId}, ${input.riderId})
+        VALUES (${data.orderId}, ${data.riderId})
       `;
     }
 
@@ -130,7 +144,7 @@ export const assignRiderServer = createServerFn({ method: "POST" })
     await sql`
       UPDATE orders 
       SET order_status = 'assigned', updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.orderId}
+      WHERE id = ${data.orderId}
     `;
 
     return { success: true };
@@ -138,78 +152,83 @@ export const assignRiderServer = createServerFn({ method: "POST" })
 
 // 7. Toggle food item availability
 export const toggleFoodAvailableServer = createServerFn({ method: "POST" })
-  .validator((input: { itemId: string; available: boolean }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     await sql`
       UPDATE food_items 
-      SET available = ${input.available}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.itemId}
+      SET available = ${data.available}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${data.itemId}
     `;
     return { success: true };
   });
 
 // 8. Toggle food recommendation status
 export const toggleFoodRecommendServer = createServerFn({ method: "POST" })
-  .validator((input: { itemId: string; recommend: boolean }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     await sql`
       UPDATE food_items 
-      SET is_recommended = ${input.recommend}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.itemId}
+      SET is_recommended = ${data.recommend}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${data.itemId}
     `;
     return { success: true };
   });
 
 // 9. Save food price
 export const saveFoodPriceServer = createServerFn({ method: "POST" })
-  .validator((input: { itemId: string; price: number }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     await sql`
       UPDATE food_items 
-      SET price = ${input.price}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.itemId}
+      SET price = ${data.price}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${data.itemId}
     `;
     return { success: true };
   });
 
 // 10. Register new rider
 export const createRiderServer = createServerFn({ method: "POST" })
-  .validator((input: { name: string; phone?: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     const id = `rider-${Math.floor(Math.random() * 90000 + 10000)}`;
     await sql`
       INSERT INTO delivery_partners (id, name, phone, status)
-      VALUES (${id}, ${input.name}, ${input.phone ?? null}, 'online')
+      VALUES (${id}, ${data.name}, ${data.phone ?? null}, 'online')
     `;
     return { success: true };
   });
 
 // 11. Claim rider job
 export const claimRiderJobServer = createServerFn({ method: "POST" })
-  .validator((input: { orderId: string; riderId: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     const existing = await sql`
       SELECT id FROM delivery_assignments 
-      WHERE order_id = ${input.orderId}
+      WHERE order_id = ${data.orderId}
     `;
 
     if (existing[0]) {
       await sql`
         UPDATE delivery_assignments 
-        SET rider_id = ${input.riderId}
-        WHERE order_id = ${input.orderId}
+        SET rider_id = ${data.riderId}
+        WHERE order_id = ${data.orderId}
       `;
     } else {
       await sql`
         INSERT INTO delivery_assignments (order_id, rider_id)
-        VALUES (${input.orderId}, ${input.riderId})
+        VALUES (${data.orderId}, ${data.riderId})
       `;
     }
 
     await sql`
       UPDATE orders 
       SET order_status = 'assigned', updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.orderId}
+      WHERE id = ${data.orderId}
     `;
 
     return { success: true };
@@ -217,24 +236,25 @@ export const claimRiderJobServer = createServerFn({ method: "POST" })
 
 // 12. Toggle favorite item
 export const toggleFavoriteServer = createServerFn({ method: "POST" })
-  .validator((input: { userId: string; foodId: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     const existing = await sql`
       SELECT id FROM favorites 
-      WHERE user_id = ${input.userId} AND food_id = ${input.foodId}
+      WHERE user_id = ${data.userId} AND food_id = ${data.foodId}
     `;
 
     if (existing[0]) {
       await sql`
         DELETE FROM favorites 
-        WHERE user_id = ${input.userId} AND food_id = ${input.foodId}
+        WHERE user_id = ${data.userId} AND food_id = ${data.foodId}
       `;
       return { favorited: false };
     } else {
       const favId = `fav-${Math.floor(Math.random() * 90000 + 10000)}`;
       await sql`
         INSERT INTO favorites (id, user_id, food_id)
-        VALUES (${favId}, ${input.userId}, ${input.foodId})
+        VALUES (${favId}, ${data.userId}, ${data.foodId})
       `;
       return { favorited: true };
     }
@@ -242,8 +262,9 @@ export const toggleFavoriteServer = createServerFn({ method: "POST" })
 
 // 13. Fetch favorites list
 export const getFavoritesServer = createServerFn({ method: "GET" })
-  .validator((userId: string) => userId)
-  .handler(async ({ input: userId }) => {
+  .validator((input: any) => input)
+  .handler(async ({ input }) => {
+    const userId = unwrapInput(input);
     const favs = await sql`
       SELECT f.food_id, fi.id, fi.name, fi.image, fi.price
       FROM favorites f
@@ -325,23 +346,25 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
 
 // 17. Fetch/validate a coupon by code
 export const validateCouponServer = createServerFn({ method: "POST" })
-  .validator((input: { code: string }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     const results = await sql`
       SELECT * FROM coupons 
-      WHERE code = ${input.code.trim().toUpperCase()} AND active = true
+      WHERE code = ${data.code.trim().toUpperCase()} AND active = true
     `;
     return results[0] || null;
   });
 
 // 18. Update order live coordinates
 export const updateOrderLocationServer = createServerFn({ method: "POST" })
-  .validator((input: { orderId: string; latitude: number; longitude: number }) => input)
+  .validator((input: any) => input)
   .handler(async ({ input }) => {
+    const data = unwrapInput(input);
     await sql`
       UPDATE orders 
-      SET latitude = ${input.latitude}, longitude = ${input.longitude}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${input.orderId}
+      SET latitude = ${data.latitude}, longitude = ${data.longitude}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${data.orderId}
     `;
     return { success: true };
   });
