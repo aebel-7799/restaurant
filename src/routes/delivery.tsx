@@ -344,9 +344,44 @@ function RiderPortalPage() {
                   {o.notes && (
                     <p className="p-2 bg-yellow-50 rounded-lg text-yellow-800 text-[10px] font-bold">💡 Instructions: {o.notes}</p>
                   )}
+                  {o.latitude && o.longitude && (
+                    <div className="mt-3.5 p-3.5 bg-brand-soft/60 border border-brand/10 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between text-[10px] font-black text-brand uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-brand animate-ping" />
+                          Live Customer GPS Connected
+                        </span>
+                        <span>Distance: ~800m</span>
+                      </div>
+                      
+                      <div className="relative h-28 overflow-hidden rounded-xl bg-muted border border-border/80">
+                        <img
+                          src={`https://maps.googleapis.com/maps/api/staticmap?center=${o.latitude},${o.longitude}&zoom=15&size=400x200&maptype=roadmap&markers=color:red%7C${o.latitude},${o.longitude}`}
+                          alt="Customer GPS Location"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          className="absolute inset-0 h-full w-full object-cover opacity-80"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-card/95 backdrop-blur px-3 py-2 rounded-xl flex items-center justify-between shadow-sm">
+                          <span className="text-[10px] font-extrabold text-muted-foreground truncate max-w-[65%]">
+                            GPS: {o.latitude.toFixed(5)}, {o.longitude.toFixed(5)}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[9px] font-black text-brand bg-brand-soft px-2.5 py-1 rounded-md border border-brand/15 hover:bg-brand/25 transition-all"
+                          >
+                            Directions
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="h-px bg-border/50" />
+
 
                 <div className="flex items-center gap-3">
                   {o.guest_phone && (

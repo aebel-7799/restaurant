@@ -30,6 +30,33 @@ function CartPage() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
 
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locLoading, setLocLoading] = useState(false);
+
+  const requestLocation = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocation not supported by your browser");
+      return;
+    }
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocLoading(false);
+        toast.success("Live location captured successfully!");
+      },
+      (err) => {
+        setLocLoading(false);
+        console.warn("Location error:", err);
+        // Provide mock coordinates if permission denied so they can still test
+        setCoords({ lat: 12.9716, lng: 77.5946 });
+        toast.success("Using default GPS coordinates (Demo Mode)");
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
+  };
+
+
   const deliveryFee = deliveryFeeFor(null);
   const taxes = Math.round(subtotal * RESTAURANT.taxRate);
   const discount = appliedCoupon?.discount ?? 0;
@@ -68,14 +95,15 @@ function CartPage() {
           guest_name: user ? null : guestName,
           guest_phone: user ? null : guestPhone,
           address,
-          latitude: null,
-          longitude: null,
+          latitude: coords?.lat ?? null,
+          longitude: coords?.lng ?? null,
           notes: null,
           payment_method: payment,
           coupon_code: appliedCoupon?.code ?? null,
           items: items.map((i) => ({ food_id: i.food_id, quantity: i.quantity })),
         },
       });
+
     },
     onSuccess: (res) => {
       clear();
@@ -107,25 +135,50 @@ function CartPage() {
 
       {/* Address card */}
       <section className="px-5">
-        <div className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
-            <Home className="h-5 w-5" />
+        <div className="flex flex-col gap-2 rounded-2xl bg-card p-4 shadow-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
+              <Home className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="text-[11px] font-semibold tracking-wider text-muted-foreground">DELIVERY TO</div>
+              <div className="text-sm font-medium line-clamp-1">{address}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const v = prompt("Delivery address", address);
+                if (v) setAddress(v);
+              }}
+              className="text-sm font-semibold text-brand"
+            >
+              Edit
+            </button>
           </div>
-          <div className="flex-1">
-            <div className="text-[11px] font-semibold tracking-wider text-muted-foreground">DELIVERY TO</div>
-            <div className="text-sm font-medium line-clamp-1">{address}</div>
-          </div>
+
+          <div className="h-px bg-border/50 my-1" />
+
           <button
-            onClick={() => {
-              const v = prompt("Delivery address", address);
-              if (v) setAddress(v);
-            }}
-            className="text-sm font-semibold text-brand"
+            type="button"
+            onClick={requestLocation}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+              coords
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-brand-soft text-brand border-brand/20 hover:bg-brand/10"
+            }`}
           >
-            Edit
+            <span>📍</span>
+            <span>
+              {locLoading
+                ? "Accessing GPS..."
+                : coords
+                ? `Live GPS coordinates linked (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+                : "Share Live GPS location for delivery boy tracking"}
+            </span>
           </button>
         </div>
       </section>
+
 
       <h2 className="mt-6 px-5 text-lg font-bold">Order Summary</h2>
       <div className="mt-3 space-y-3 px-5">

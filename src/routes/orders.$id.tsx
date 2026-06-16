@@ -60,6 +60,35 @@ function TrackPage() {
     return () => { supabase.removeChannel(ch); };
   }, [id, qc]);
 
+  // Live Location Watch (Updates customer location to database in real-time)
+  useEffect(() => {
+    if (!order || order.order_status === "delivered" || order.order_status === "cancelled") return;
+
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          // Dynamically update coordinates in orders table
+          const { error } = await supabase
+            .from("orders")
+            .update({ latitude, longitude })
+            .eq("id", order.id);
+          
+          if (error) {
+            console.error("Error updating customer live location:", error);
+          }
+        },
+        (err) => console.log("Watch error:", err),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+      
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, [order?.id, order?.order_status]);
+
+
   if (!order) {
     return <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>;
   }
@@ -100,6 +129,21 @@ function TrackPage() {
           Arriving in {order.estimated_delivery_minutes} mins
         </div>
       </div>
+
+      {/* Geolocation sharing status */}
+      <div className="mx-5 mt-3 flex items-center justify-between rounded-xl bg-card border border-border p-3 shadow-card">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          </span>
+          <span className="text-[10px] font-bold text-foreground">Sharing Live Location with Rider</span>
+        </div>
+        <span className="text-[9px] text-muted-foreground font-semibold">
+          GPS: {order.latitude?.toFixed(4) ?? "---"}, {order.longitude?.toFixed(4) ?? "---"}
+        </span>
+      </div>
+
 
       {/* Stepper */}
       <div className="mt-6 px-5">
