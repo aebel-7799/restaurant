@@ -156,9 +156,10 @@ export const assignRiderServer = createServerFn({ method: "POST" })
         WHERE order_id = ${payload.orderId}
       `;
     } else {
+      const assignmentId = `assign-${Math.floor(Math.random() * 90000 + 10000)}`;
       await sql`
-        INSERT INTO delivery_assignments (order_id, rider_id)
-        VALUES (${payload.orderId}, ${payload.riderId})
+        INSERT INTO delivery_assignments (id, order_id, rider_id)
+        VALUES (${assignmentId}, ${payload.orderId}, ${payload.riderId})
       `;
     }
 
@@ -241,9 +242,10 @@ export const claimRiderJobServer = createServerFn({ method: "POST" })
         WHERE order_id = ${payload.orderId}
       `;
     } else {
+      const assignmentId = `assign-${Math.floor(Math.random() * 90000 + 10000)}`;
       await sql`
-        INSERT INTO delivery_assignments (order_id, rider_id)
-        VALUES (${payload.orderId}, ${payload.riderId})
+        INSERT INTO delivery_assignments (id, order_id, rider_id)
+        VALUES (${assignmentId}, ${payload.orderId}, ${payload.riderId})
       `;
     }
 
