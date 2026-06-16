@@ -13,18 +13,23 @@ function unwrapInput<T>(input: T | { data: T }): T {
 export const getFoodItems = createServerFn({ method: "GET" })
   .validator((input: any) => input)
   .handler(async ({ input }) => {
-    const categoryId = unwrapInput(input);
-    if (categoryId && categoryId !== "all") {
+    try {
+      const categoryId = unwrapInput(input);
+      if (categoryId && categoryId !== "all") {
+        return await sql`
+          SELECT * FROM food_items 
+          WHERE category_id = ${categoryId}
+          ORDER BY name ASC
+        `;
+      }
       return await sql`
         SELECT * FROM food_items 
-        WHERE category_id = ${categoryId}
         ORDER BY name ASC
       `;
+    } catch (err: any) {
+      console.error("Error in getFoodItems server function:", err);
+      return { error: err.message || String(err) };
     }
-    return await sql`
-      SELECT * FROM food_items 
-      ORDER BY name ASC
-    `;
   });
 
 // 2. Fetch details for a single food item

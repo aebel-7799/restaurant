@@ -31,7 +31,14 @@ function HomePage() {
 
   const { data: foodItems = [] } = useQuery({
     queryKey: ["foodItems"],
-    queryFn: () => getFoodItemsFn({ data: "all" }),
+    queryFn: async () => {
+      const res = await getFoodItemsFn({ data: "all" });
+      if (res && typeof res === "object" && "error" in res) {
+        toast.error(`Database Error: ${(res as any).error}`, { duration: 10000 });
+        return [];
+      }
+      return (res || []) as any[];
+    },
   });
 
   const categories = MOCK_CATEGORIES;
