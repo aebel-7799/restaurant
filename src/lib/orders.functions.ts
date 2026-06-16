@@ -10,13 +10,16 @@ const PlaceOrderInput = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   notes: z.string().optional().nullable(),
-  payment_method: z.enum(["upi", "card", "cod", "netbanking", "wallet"]),
+  payment_method: z.enum(["upi", "card", "cod", "netbanking", "wallet", "upi", "card", "cod"]), // broad support
   coupon_code: z.string().optional().nullable(),
   items: z
     .array(
       z.object({
         food_id: z.string(),
         quantity: z.number().int().min(1).max(50),
+        price: z.number().optional().nullable(),
+        name: z.string().optional().nullable(),
+        image: z.string().optional().nullable(),
         notes: z.string().optional().nullable(),
       }),
     )
@@ -24,14 +27,14 @@ const PlaceOrderInput = z.object({
 });
 
 export const placeOrder = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => PlaceOrderInput.parse(data))
+  .validator((data: unknown) => PlaceOrderInput.parse(data))
   .handler(async ({ data }) => {
-    // Load food items
-    const ids = data.items.map((i) => i.food_id);
+    // Load food items - extract the base food IDs (e.g., 'burger-b1' from 'burger-b1-mayo')
+    const baseIds = data.items.map((i) => i.food_id.split("-").slice(0, 2).join("-"));
     const foods = await sql`
       SELECT id, name, image, price, preparation_time 
       FROM food_items 
-      WHERE id IN (${ids})
+      WHERE id = ANY(${baseIds})
     `;
 
     if (!foods || foods.length === 0) throw new Error("No items found");
@@ -40,15 +43,21 @@ export const placeOrder = createServerFn({ method: "POST" })
 
     let subtotal = 0;
     const lineItems = data.items.map((i) => {
-      const f = foodById.get(i.food_id);
-      if (!f) throw new Error(`Item ${i.food_id} unavailable`);
-      subtotal += Number(f.price) * i.quantity;
+      const baseId = i.food_id.split("-").slice(0, 2).join("-");
+      const f = foodById.get(baseId);
+      
+      // Use client-provided price (which includes custom add-on pricing) or fallback to DB price
+      const price = i.price ?? (f ? Number(f.price) : 0);
+      const name = i.name ?? (f ? f.name : "Unknown Item");
+      const image = i.image ?? (f ? f.image : null);
+
+      subtotal += price * i.quantity;
       return {
-        food_id: f.id,
-        name: f.name,
-        image: f.image,
+        food_id: i.food_id, // Save the full customized food_id (e.g. burger-b1-mayo)
+        name: name,
+        image: image,
         quantity: i.quantity,
-        price: Number(f.price),
+        price: price,
         notes: i.notes ?? null,
       };
     });
@@ -73,7 +82,12 @@ export const placeOrder = createServerFn({ method: "POST" })
     const taxes = Math.round(subtotal * 0.05);
     const total = Math.max(0, subtotal + delivery_charge + taxes - discount);
 
-    const prepMax = Math.max(...lineItems.map((l) => foodById.get(l.food_id)?.preparation_time ?? 20));
+    const prepMax = Math.max(
+      ...lineItems.map((l) => {
+        const baseId = l.food_id.split("-").slice(0, 2).join("-");
+        return foodById.get(baseId)?.preparation_time ?? 20;
+      })
+    );
     const eta = prepMax + 15;
 
     // Order number

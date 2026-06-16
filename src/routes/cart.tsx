@@ -40,8 +40,28 @@ function CartPage() {
     }
     setLocLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      async (pos) => {
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        setCoords({ lat: latitude, lng: longitude });
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.display_name) {
+              setAddress(data.display_name);
+              toast.success("Live address resolved!");
+            } else {
+              setAddress(`📍 GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+            }
+          } else {
+            setAddress(`📍 GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          }
+        } catch (err) {
+          console.warn("Reverse geocoding error:", err);
+          setAddress(`📍 GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        }
         setLocLoading(false);
         toast.success("Live location captured successfully!");
       },
@@ -50,6 +70,7 @@ function CartPage() {
         console.warn("Location error:", err);
         // Provide mock coordinates if permission denied so they can still test
         setCoords({ lat: 12.9716, lng: 77.5946 });
+        setAddress("MG Road, Bengaluru, Karnataka, India");
         toast.success("Using default GPS coordinates (Demo Mode)");
       },
       { enableHighAccuracy: true, timeout: 6000 }
@@ -96,7 +117,14 @@ function CartPage() {
           notes: null,
           payment_method: payment,
           coupon_code: appliedCoupon?.code ?? null,
-          items: items.map((i) => ({ food_id: i.food_id, quantity: i.quantity })),
+          items: items.map((i) => ({ 
+            food_id: i.food_id, 
+            quantity: i.quantity,
+            price: i.price,
+            name: i.name,
+            image: i.image,
+            notes: i.notes ?? null
+          })),
         },
       });
 

@@ -23,6 +23,7 @@ export const Route = createFileRoute("/food/$id")({
 
 function FoodDetails() {
   const { id } = Route.useParams();
+  console.log("[CLIENT FoodDetails] Params ID:", id);
   const navigate = useNavigate();
   const { add } = useCart();
   const { user } = useAuth();
@@ -44,10 +45,11 @@ function FoodDetails() {
   };
 
   const getFoodItemFn = useServerFn(getFoodItem);
-  const { data: food } = useQuery({
+  const { data: food, error, isLoading } = useQuery({
     queryKey: ["food", id],
     queryFn: () => getFoodItemFn({ data: id }),
   });
+  console.log("[CLIENT FoodDetails] Query state:", { food, error, isLoading });
 
   const reviews = [
     { id: "r1", rating: 5, review: "Absolutely delicious! Authentic taste and quick delivery.", created_at: new Date().toISOString() }
@@ -72,6 +74,10 @@ function FoodDetails() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["fav", id] }),
     onError: (e: Error) => toast.error(e.message),
   });
+
+  if (error) {
+    return <div className="p-8 text-center text-xs text-red-500">Error: {error.message || String(error)}</div>;
+  }
 
   if (!food) {
     return <div className="p-8 text-center text-xs text-muted-foreground">Loading…</div>;

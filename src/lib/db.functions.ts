@@ -33,19 +33,22 @@ export const getFoodItems = createServerFn({ method: "GET" })
   });
 
 // 2. Fetch details for a single food item
-export const getFoodItem = createServerFn({ method: "GET" })
+export const getFoodItem = createServerFn({ method: "POST" })
   .validator((input: any) => input)
   .handler(async ({ input }) => {
+    console.log("[SERVER getFoodItem] Raw input:", input);
     const id = unwrapInput(input);
+    console.log("[SERVER getFoodItem] Unwrapped ID:", id);
     const results = await sql`
       SELECT * FROM food_items 
       WHERE id = ${id}
     `;
+    console.log("[SERVER getFoodItem] Query results length:", results.length, "Found:", !!results[0]);
     return results[0] || null;
   });
 
 // 3. Fetch orders for a user
-export const getUserOrders = createServerFn({ method: "GET" })
+export const getUserOrders = createServerFn({ method: "POST" })
   .validator((input: any) => input)
   .handler(async ({ input }) => {
     const userId = unwrapInput(input);
@@ -67,7 +70,7 @@ export const getUserOrders = createServerFn({ method: "GET" })
   });
 
 // 4. Fetch details for a single order (tracking view)
-export const getOrderDetails = createServerFn({ method: "GET" })
+export const getOrderDetails = createServerFn({ method: "POST" })
   .validator((input: any) => input)
   .handler(async ({ input }) => {
     const orderId = unwrapInput(input);
@@ -266,7 +269,7 @@ export const toggleFavoriteServer = createServerFn({ method: "POST" })
   });
 
 // 13. Fetch favorites list
-export const getFavoritesServer = createServerFn({ method: "GET" })
+export const getFavoritesServer = createServerFn({ method: "POST" })
   .validator((input: any) => input)
   .handler(async ({ input }) => {
     const userId = unwrapInput(input);
