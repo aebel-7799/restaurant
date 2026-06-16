@@ -1,0 +1,264 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { ArrowLeft, Home, Ticket, ArrowRight, X } from "lucide-react";
+import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { placeOrder } from "@/lib/orders.functions";
+import { formatMoney, RESTAURANT, deliveryFeeFor } from "@/lib/restaurant.config";
+import { QtyStepper } from "@/components/qty-stepper";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/cart")({
+  head: () => ({ meta: [{ title: "Cart — Our Kitchen" }] }),
+  component: CartPage,
+});
+
+type PaymentMethod = "upi" | "card" | "cod";
+
+function CartPage() {
+  const { items, setQty, clear, subtotal } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const [coupon, setCoupon] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [payment, setPayment] = useState<PaymentMethod>("upi");
+  const [address, setAddress] = useState("123, Luxury Heights, Gourmet…");
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+
+  const deliveryFee = deliveryFeeFor(null);
+  const taxes = Math.round(subtotal * RESTAURANT.taxRate);
+  const discount = appliedCoupon?.discount ?? 0;
+  const total = Math.max(0, subtotal + deliveryFee + taxes - discount);
+
+  const applyCoupon = async () => {
+    const code = coupon.trim().toUpperCase();
+    if (!code) return;
+    const { data } = await supabase
+      .from("coupons")
+      .select("*")
+      .eq("code", code)
+      .eq("active", true)
+      .maybeSingle();
+    if (!data) return toast.error("Invalid coupon");
+    if (Number(data.min_order_amount) > subtotal)
+      return toast.error(`Minimum order ${formatMoney(Number(data.min_order_amount))}`);
+    const d =
+      data.type === "flat"
+        ? Number(data.value)
+        : Math.min((subtotal * Number(data.value)) / 100, Number(data.max_discount ?? 9999));
+    setAppliedCoupon({ code: data.code, discount: Math.round(d) });
+    toast.success(`${data.code} applied`);
+  };
+
+  const placeOrderFn = useServerFn(placeOrder);
+  const submit = useMutation({
+    mutationFn: async () => {
+      if (items.length === 0) throw new Error("Cart is empty");
+      if (!address.trim()) throw new Error("Add delivery address");
+      if (!user && (!guestName.trim() || !guestPhone.trim()))
+        throw new Error("Add name & phone for guest checkout");
+      return placeOrderFn({
+        data: {
+          user_id: user?.id ?? null,
+          guest_name: user ? null : guestName,
+          guest_phone: user ? null : guestPhone,
+          address,
+          latitude: null,
+          longitude: null,
+          notes: null,
+          payment_method: payment,
+          coupon_code: appliedCoupon?.code ?? null,
+          items: items.map((i) => ({ food_id: i.food_id, quantity: i.quantity })),
+        },
+      });
+    },
+    onSuccess: (res) => {
+      clear();
+      toast.success("Order placed!");
+      navigate({ to: "/orders/$id", params: { id: res.id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (items.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+        <h1 className="text-xl font-semibold">Your cart is empty</h1>
+        <p className="text-sm text-muted-foreground">Browse the menu to add items.</p>
+        <Link to="/" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-brand-foreground">
+          Browse menu
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background pb-44">
+      <header className="sticky top-0 z-10 flex items-center justify-between bg-background px-5 pt-6 pb-3">
+        <Link to="/" aria-label="Back"><ArrowLeft className="h-5 w-5 text-brand" /></Link>
+        <h1 className="text-base font-semibold text-brand">My Cart</h1>
+        <button onClick={clear} className="text-sm font-semibold text-brand">Clear All</button>
+      </header>
+
+      {/* Address card */}
+      <section className="px-5">
+        <div className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
+            <Home className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <div className="text-[11px] font-semibold tracking-wider text-muted-foreground">DELIVERY TO</div>
+            <div className="text-sm font-medium line-clamp-1">{address}</div>
+          </div>
+          <button
+            onClick={() => {
+              const v = prompt("Delivery address", address);
+              if (v) setAddress(v);
+            }}
+            className="text-sm font-semibold text-brand"
+          >
+            Edit
+          </button>
+        </div>
+      </section>
+
+      <h2 className="mt-6 px-5 text-lg font-bold">Order Summary</h2>
+      <div className="mt-3 space-y-3 px-5">
+        {items.map((i) => (
+          <div key={i.food_id} className="flex gap-3 rounded-2xl bg-card p-3 shadow-card">
+            <img src={i.image ?? ""} alt={i.name} className="h-20 w-20 rounded-xl object-cover" />
+            <div className="flex-1">
+              <div className="font-semibold leading-tight">{i.name}</div>
+              <div className="mt-1 flex items-end justify-between">
+                <div className="font-bold text-brand">{formatMoney(i.price * i.quantity)}</div>
+                <QtyStepper value={i.quantity} onChange={(v) => setQty(i.food_id, v)} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Coupon */}
+      <section className="mt-5 px-5">
+        {appliedCoupon ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-brand bg-brand-soft p-4">
+            <Ticket className="h-5 w-5 text-brand" />
+            <div className="flex-1">
+              <div className="font-semibold text-brand">{appliedCoupon.code} Applied</div>
+              <div className="text-xs text-foreground/80">You saved {formatMoney(appliedCoupon.discount)} on this order</div>
+            </div>
+            <button
+              onClick={() => setAppliedCoupon(null)}
+              className="rounded-full bg-card px-3 py-1.5 text-sm font-semibold"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+              placeholder="Coupon code (e.g. WELCOME50)"
+              className="flex-1 rounded-2xl bg-muted px-4 py-3 text-sm outline-none"
+            />
+            <button onClick={applyCoupon} className="rounded-2xl bg-brand px-4 text-sm font-semibold text-brand-foreground">
+              Apply
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Payment */}
+      <h2 className="mt-7 px-5 text-lg font-bold">Payment Method</h2>
+      <div className="mt-3 flex gap-3 overflow-x-auto no-scrollbar px-5 pb-1">
+        <PayBox label="UPI / GPay" active={payment === "upi"} onClick={() => setPayment("upi")} />
+        <PayBox label="Card" active={payment === "card"} onClick={() => setPayment("card")} />
+        <PayBox label="Cash" active={payment === "cod"} onClick={() => setPayment("cod")} />
+      </div>
+
+      {/* Guest fields */}
+      {!user && (
+        <section className="mt-5 space-y-2 px-5">
+          <input
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="Your name"
+            className="w-full rounded-2xl bg-muted px-4 py-3 text-sm outline-none"
+          />
+          <input
+            value={guestPhone}
+            onChange={(e) => setGuestPhone(e.target.value)}
+            placeholder="Phone number"
+            className="w-full rounded-2xl bg-muted px-4 py-3 text-sm outline-none"
+          />
+          <Link to="/auth" className="text-xs text-brand">Sign in for faster checkout →</Link>
+        </section>
+      )}
+
+      {/* Totals */}
+      <section className="mt-6 mx-5 rounded-2xl bg-card p-5 shadow-card text-sm">
+        <Row label="Item Total" value={formatMoney(subtotal)} />
+        <Row label="Delivery Fee" value={formatMoney(deliveryFee)} />
+        <Row label="Taxes & Charges" value={formatMoney(taxes)} />
+        {appliedCoupon && (
+          <Row label={`Discount (${appliedCoupon.code})`} value={`- ${formatMoney(discount)}`} highlight />
+        )}
+        <div className="my-3 h-px bg-border" />
+        <Row label="Grand Total" value={formatMoney(total)} bold />
+      </section>
+
+      {/* Bottom bar */}
+      <div className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 border-t border-border bg-card">
+        <div className="flex items-center justify-between px-5 pt-3">
+          <div>
+            <div className="text-xs text-muted-foreground">TO PAY</div>
+            <div className="text-lg font-bold">{formatMoney(total)}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs font-semibold text-brand">Estimated Delivery</div>
+            <div className="text-sm font-semibold">25 - 30 Mins</div>
+          </div>
+        </div>
+        <div className="p-4">
+          <button
+            disabled={submit.isPending}
+            onClick={() => submit.mutate()}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-4 text-sm font-semibold text-brand-foreground disabled:opacity-60"
+          >
+            {submit.isPending ? "Placing…" : "Proceed to Payment"}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, bold, highlight }: { label: string; value: string; bold?: boolean; highlight?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between py-1.5 ${bold ? "font-bold" : ""} ${highlight ? "text-brand font-semibold" : ""}`}>
+      <span className={highlight ? "" : "text-muted-foreground"}>{label}</span>
+      <span className={bold || highlight ? "text-brand" : ""}>{value}</span>
+    </div>
+  );
+}
+
+function PayBox({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex h-24 w-28 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 text-sm font-semibold ${
+        active ? "border-brand bg-brand-soft text-brand" : "border-border bg-card"
+      }`}
+    >
+      <span className="text-xs uppercase tracking-wider">{label}</span>
+      {active && <X className="h-4 w-4 rotate-45 opacity-0" />}
+    </button>
+  );
+}
