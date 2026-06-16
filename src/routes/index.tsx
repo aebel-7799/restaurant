@@ -203,7 +203,7 @@ function HomePage() {
                   {/* Rating Badge */}
                   <span className="absolute left-3 top-3 inline-flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur-xs px-2 py-0.5 text-[9px] font-extrabold text-[#2E251B] shadow-sm">
                     <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                    {f.rating.toFixed(1)}
+                    {Number(f.rating).toFixed(1)}
                   </span>
                   
                   {/* Heart Icon */}
