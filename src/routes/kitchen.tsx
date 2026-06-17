@@ -101,7 +101,7 @@ function KitchenPage() {
     
     return (
       <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-        isLate ? "bg-red-100 text-red-700 animate-pulse" : "bg-muted text-muted-foreground"
+        isLate ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"
       }`}>
         <Clock className="h-3 w-3" />
         {timeStr}

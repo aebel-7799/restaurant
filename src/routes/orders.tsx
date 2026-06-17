@@ -103,7 +103,7 @@ function OrdersPage() {
                 <span className="font-black text-brand text-base">{formatMoney(Number(o.total))}</span>
                 
                 {isOngoing ? (
-                  <button className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[11px] font-bold text-brand-foreground shadow-sm animate-pulse">
+                  <button className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-[11px] font-bold text-brand-foreground shadow-sm">
                     <Bike className="h-3.5 w-3.5" /> Track Live
                   </button>
                 ) : (
@@ -148,7 +148,7 @@ function StatusBadge({ status }: { status: string }) {
     preparing: "bg-amber-50 text-amber-700 border-amber-200",
     packed: "bg-purple-50 text-purple-700 border-purple-200",
     assigned: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    out_for_delivery: "bg-orange-50 text-orange-700 border-orange-200 animate-pulse",
+    out_for_delivery: "bg-orange-50 text-orange-700 border-orange-200",
     delivered: "bg-green-50 text-green-700 border-green-200",
     cancelled: "bg-red-50 text-red-700 border-red-200",
   };

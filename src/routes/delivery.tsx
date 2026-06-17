@@ -285,7 +285,7 @@ function RiderPortalPage() {
                   </div>
                   <span className={`rounded-full border px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
                     o.order_status === "out_for_delivery"
-                      ? "bg-orange-50 text-orange-700 border-orange-200 animate-pulse"
+                      ? "bg-orange-50 text-orange-700 border-orange-200"
                       : "bg-indigo-50 text-indigo-700 border-indigo-200"
                   }`}>
                     {o.order_status.replace(/_/g, " ")}
