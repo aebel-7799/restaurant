@@ -6,7 +6,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -36,17 +36,50 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error }: { error: Error }) {
+  const isChunkError =
+    error?.message?.includes("Failed to fetch dynamically imported module") ||
+    error?.message?.includes("Importing a module script failed") ||
+    error?.message?.includes("dynamic import");
+
+  useEffect(() => {
+    if (isChunkError) {
+      console.warn("Dynamic import error detected. Reloading page to fetch latest bundles...");
+      const hasReloaded = sessionStorage.getItem("grillgo.chunk_reload");
+      if (!hasReloaded) {
+        sessionStorage.setItem("grillgo.chunk_reload", "true");
+        window.location.reload();
+      }
+    }
+  }, [isChunkError]);
+
+  const handleReload = () => {
+    sessionStorage.removeItem("grillgo.chunk_reload");
+    window.location.reload();
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+      <div className="max-w-md text-center space-y-4">
         <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        <a
-          href="/"
-          className="mt-6 inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-brand-foreground"
-        >
-          Go home
-        </a>
+        <p className="text-sm text-muted-foreground">
+          {isChunkError
+            ? "A new update is available! Please refresh to load the latest version."
+            : error.message}
+        </p>
+        <div className="flex gap-3 justify-center items-center">
+          <button
+            onClick={handleReload}
+            className="inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-brand-foreground shadow"
+          >
+            Reload Page
+          </button>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground shadow-sm"
+          >
+            Go Home
+          </a>
+        </div>
       </div>
     </div>
   );
