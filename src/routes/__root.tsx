@@ -182,29 +182,28 @@ function RootComponent() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("grillgo.saved_addresses");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            const cleaned = parsed.filter(item => item && item.id !== "mock-saved-1" && item.id !== "mock-saved-2" && !item.id?.startsWith("mock-"));
-            if (cleaned.length !== parsed.length) {
-              localStorage.setItem("grillgo.saved_addresses", JSON.stringify(cleaned));
-            }
-          }
-        }
-
-        const recents = localStorage.getItem("grillgo.recent_locations");
-        if (recents) {
-          const parsed = JSON.parse(recents);
-          if (Array.isArray(parsed)) {
-            const cleaned = parsed.filter(item => item && item.id !== "mock-recent-1" && item.id !== "mock-recent-2" && !item.id?.startsWith("mock-"));
-            if (cleaned.length !== parsed.length) {
-              localStorage.setItem("grillgo.recent_locations", JSON.stringify(cleaned));
-            }
-          }
+        const migrationKey = "grillgo.clean_v2";
+        if (localStorage.getItem(migrationKey) !== "true") {
+          // Clear all saved addresses & recent locations once to wipe out old test data
+          localStorage.setItem("grillgo.saved_addresses", JSON.stringify([]));
+          localStorage.setItem("grillgo.recent_locations", JSON.stringify([]));
+          
+          // Reset default selected location
+          const defaultLoc = {
+            title: "Kaipally",
+            address: "Poonjar Thekkekara",
+            fullAddress: "Kaipally, Poonjar Thekkekara",
+            lat: 9.6824,
+            lng: 76.9083
+          };
+          localStorage.setItem("grillgo.selected_location", JSON.stringify(defaultLoc));
+          
+          localStorage.setItem(migrationKey, "true");
+          console.log("One-time local storage data migration completed.");
+          window.location.reload();
         }
       } catch (e) {
-        console.error("Error cleaning localStorage:", e);
+        console.error("Error performing storage migration:", e);
       }
     }
 
