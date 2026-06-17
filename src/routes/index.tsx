@@ -100,7 +100,20 @@ function HomePage() {
           } else {
             localStorage.removeItem("grillgo.selected_location");
           }
-        } catch (e) {}
+        } catch (e) {
+          localStorage.removeItem("grillgo.selected_location");
+        }
+      }
+      if (!localStorage.getItem("grillgo.selected_location")) {
+        const defaultLoc = {
+          title: "Kaipally",
+          address: "Poonjar Thekkekara",
+          fullAddress: "Kaipally, Poonjar Thekkekara",
+          lat: 9.6824,
+          lng: 76.9083
+        };
+        setSelectedLocation(defaultLoc);
+        localStorage.setItem("grillgo.selected_location", JSON.stringify(defaultLoc));
       }
 
       // 2. Saved addresses
@@ -113,7 +126,9 @@ function HomePage() {
           } else {
             localStorage.removeItem("grillgo.saved_addresses");
           }
-        } catch (e) {}
+        } catch (e) {
+          localStorage.removeItem("grillgo.saved_addresses");
+        }
       }
       if (!localStorage.getItem("grillgo.saved_addresses")) {
         const defaults = [
@@ -150,7 +165,9 @@ function HomePage() {
           } else {
             localStorage.removeItem("grillgo.recent_locations");
           }
-        } catch (e) {}
+        } catch (e) {
+          localStorage.removeItem("grillgo.recent_locations");
+        }
       }
       if (!localStorage.getItem("grillgo.recent_locations")) {
         const defaults = [

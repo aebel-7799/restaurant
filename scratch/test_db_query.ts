@@ -5,10 +5,8 @@ const sql = postgres(connectionString);
 
 async function run() {
   try {
-    const result = await sql`SELECT category_id, COUNT(*) FROM food_items GROUP BY category_id`;
-    console.log("Category IDs in food_items:", result);
-    const categories = await sql`SELECT id, name FROM categories`;
-    console.log("Categories in categories table:", categories);
+    const result = await sql`SELECT id, name, is_recommended, category_id FROM food_items WHERE is_recommended = true`;
+    console.log("Recommended Food Items:", result);
   } catch (err) {
     console.error("Error running query:", err);
   } finally {
