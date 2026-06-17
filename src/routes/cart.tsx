@@ -33,7 +33,6 @@ function CartPage() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locLoading, setLocLoading] = useState(false);
   const [showAddressDrawer, setShowAddressDrawer] = useState(false);
-  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
   // Load selected location from localStorage
   useEffect(() => {
@@ -50,16 +49,7 @@ function CartPage() {
           }
         } catch (e) {}
       }
-
-      const savedAddrs = localStorage.getItem("grillgo.saved_addresses");
-      if (savedAddrs) {
-        try {
-          const parsed = JSON.parse(savedAddrs);
-          if (Array.isArray(parsed)) {
-            setSavedAddresses(parsed);
-          }
-        } catch (e) {}
-      }
+      
     }
   }, []);
 
@@ -398,47 +388,7 @@ function CartPage() {
               <span>{locLoading ? "Accessing GPS..." : "Detect & use current location via GPS"}</span>
             </button>
 
-            {/* Saved Addresses list */}
-            {savedAddresses.length > 0 && (
-              <div className="mt-6 text-left">
-                <div className="text-[11px] font-bold tracking-wider text-[#A1A1AA] uppercase mb-2">Use Saved Address</div>
-                <div className="space-y-3">
-                  {savedAddresses.map((addr: any) => (
-                    <div
-                      key={addr.id}
-                      onClick={() => {
-                        setAddress(addr.address);
-                        if (addr.lat && addr.lng) {
-                          setCoords({ lat: addr.lat, lng: addr.lng });
-                        }
-                        setShowAddressDrawer(false);
-                        toast.success(`Address set to: ${addr.title}`);
-                        
-                        // Synchronize with home page select_location
-                        localStorage.setItem("grillgo.selected_location", JSON.stringify({
-                          title: addr.title,
-                          address: addr.address,
-                          fullAddress: addr.address,
-                          lat: addr.lat,
-                          lng: addr.lng
-                        }));
-                      }}
-                      className="flex gap-3 p-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] hover:border-[#7F011F]/50 hover:bg-[#2E2E33]/30 transition-all cursor-pointer text-left group"
-                    >
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2E2E33] text-[#A1A1AA] group-hover:text-white transition-colors shrink-0">
-                        <Home className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-white leading-tight">{addr.title}</div>
-                        <div className="text-[11px] text-[#A1A1AA] mt-1.5 leading-relaxed font-medium break-words">
-                          {addr.address}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Confirm button */}
             <div className="mt-6 flex gap-3">
