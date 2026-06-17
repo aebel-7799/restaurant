@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Home, Ticket, ArrowRight, X } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,6 +32,24 @@ function CartPage() {
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locLoading, setLocLoading] = useState(false);
+
+  // Load selected location from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("grillgo.selected_location");
+      if (saved) {
+        try {
+          const loc = JSON.parse(saved);
+          if (loc && loc.fullAddress) {
+            setAddress(loc.fullAddress);
+          }
+          if (loc && loc.lat && loc.lng) {
+            setCoords({ lat: loc.lat, lng: loc.lng });
+          }
+        } catch (e) {}
+      }
+    }
+  }, []);
 
   const requestLocation = () => {
     if (typeof window === "undefined" || !navigator.geolocation) {

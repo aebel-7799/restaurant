@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { MapPin, Search as SearchIcon, Star, Plus, ShoppingBag, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, Search as SearchIcon, Star, Plus, ShoppingBag, Heart, ChevronDown, Wallet, Mic, X, ChevronRight, Clock, Trash2, Share2, MoreHorizontal, Loader2, Compass } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFoodItems } from "@/lib/db.functions";
 import { BottomNav } from "@/components/bottom-nav";
 import { WhatsAppFab } from "@/components/whatsapp-fab";
 import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
 import { formatMoney } from "@/lib/restaurant.config";
 import { toast } from "sonner";
 import { MOCK_CATEGORIES } from "@/lib/mock-food";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const [category, setCategory] = useState<string | null>(null);
   const { add, count } = useCart();
+  const { user } = useAuth();
 
   const getFoodItemsFn = useServerFn(getFoodItems);
 
@@ -55,69 +57,364 @@ function HomePage() {
     ...MOCK_CATEGORIES
   ];
 
+  // --- LOCATION & PROFILE STATES & HANDLERS ---
+  const [selectedLocation, setSelectedLocation] = useState<{
+    title: string;
+    address: string;
+    fullAddress: string;
+    lat?: number;
+    lng?: number;
+  }>({
+    title: "Kaipally",
+    address: "Poonjar Thekkekara",
+    fullAddress: "Kaipally, Poonjar Thekkekara",
+    lat: 9.6824,
+    lng: 76.9083
+  });
+
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [recentLocations, setRecentLocations] = useState<any[]>([]);
+  const [showLocationDrawer, setShowLocationDrawer] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("Home");
+  const [newAddress, setNewAddress] = useState("");
+  const [newPhone, setNewPhone] = useState("+91-8590014578");
+  const [currentLocLoading, setCurrentLocLoading] = useState(false);
+  const [importingBlinkit, setImportingBlinkit] = useState(false);
+  const [importingStep, setImportingStep] = useState("");
+
+  const userInitial = user
+    ? (user.user_metadata?.name?.[0] || user.email?.[0] || "A").toUpperCase()
+    : "A";
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // 1. Selected location
+      const savedSel = localStorage.getItem("grillgo.selected_location");
+      if (savedSel) {
+        try {
+          setSelectedLocation(JSON.parse(savedSel));
+        } catch (e) {}
+      } else {
+        localStorage.setItem("grillgo.selected_location", JSON.stringify({
+          title: "Kaipally",
+          address: "Poonjar Thekkekara",
+          fullAddress: "Kaipally, Poonjar Thekkekara",
+          lat: 9.6824,
+          lng: 76.9083
+        }));
+      }
+
+      // 2. Saved addresses
+      const savedAddrs = localStorage.getItem("grillgo.saved_addresses");
+      if (savedAddrs) {
+        try {
+          setSavedAddresses(JSON.parse(savedAddrs));
+        } catch (e) {}
+      } else {
+        const defaults = [
+          {
+            id: "mock-saved-1",
+            title: "Home",
+            address: "padinjarekara house karoor PO pala, opposite of pala steels godawn, 686574, Lalam, India",
+            phone: "+91-8590014578",
+            distance: "18.3 km",
+            lat: 9.7104,
+            lng: 76.6830
+          },
+          {
+            id: "mock-saved-2",
+            title: "Home",
+            address: "shamla hostel near freedom mart, Thrikkakara, Edappally, Kochi",
+            phone: "+91-8590014578",
+            distance: "68 km",
+            lat: 10.0261,
+            lng: 76.3125
+          }
+        ];
+        setSavedAddresses(defaults);
+        localStorage.setItem("grillgo.saved_addresses", JSON.stringify(defaults));
+      }
+
+      // 3. Recent locations
+      const savedRecents = localStorage.getItem("grillgo.recent_locations");
+      if (savedRecents) {
+        try {
+          setRecentLocations(JSON.parse(savedRecents));
+        } catch (e) {}
+      } else {
+        const defaults = [
+          {
+            id: "mock-recent-1",
+            title: "Kaipally",
+            address: "Poonjar Thekkekara",
+            distance: "1.8 km",
+            lat: 9.6824,
+            lng: 76.9083
+          },
+          {
+            id: "mock-recent-2",
+            title: "Home",
+            address: "shamla hostel near freedom mart, Thrikkakara, Edappally, Kochi",
+            distance: "68 km",
+            lat: 10.0261,
+            lng: 76.3125
+          }
+        ];
+        setRecentLocations(defaults);
+        localStorage.setItem("grillgo.recent_locations", JSON.stringify(defaults));
+      }
+    }
+  }, []);
+
+  const handleSelectLocation = (loc: { title: string; address: string; lat?: number; lng?: number }) => {
+    const fullAddress = loc.address
+      ? (loc.address.startsWith(loc.title) ? loc.address : `${loc.title}, ${loc.address}`)
+      : loc.title;
+
+    const newLoc = {
+      title: loc.title,
+      address: loc.address,
+      fullAddress,
+      lat: loc.lat || 9.6824,
+      lng: loc.lng || 76.9083
+    };
+
+    setSelectedLocation(newLoc);
+    localStorage.setItem("grillgo.selected_location", JSON.stringify(newLoc));
+
+    // Update recent locations list
+    const updatedRecents = [
+      {
+        id: `recent-${Date.now()}`,
+        title: loc.title,
+        address: loc.address,
+        distance: loc.distance || "0.1 km",
+        lat: loc.lat,
+        lng: loc.lng
+      },
+      ...recentLocations.filter(r => r.address !== loc.address && r.title !== loc.title)
+    ].slice(0, 5);
+
+    setRecentLocations(updatedRecents);
+    localStorage.setItem("grillgo.recent_locations", JSON.stringify(updatedRecents));
+
+    setShowLocationDrawer(false);
+    toast.success(`Delivery address changed to ${loc.title}`);
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocation not supported by your browser");
+      return;
+    }
+    setCurrentLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=en`);
+          if (res.ok) {
+            const data = await res.json();
+            const displayName = data.display_name || "";
+            // Extract a reasonable title from address details
+            const parts = displayName.split(",");
+            const title = parts[0] || "Current Location";
+            const address = parts.slice(1).join(",").trim() || `GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+            
+            handleSelectLocation({
+              title,
+              address,
+              lat: latitude,
+              lng: longitude
+            });
+          } else {
+            handleSelectLocation({
+              title: "Current Location",
+              address: `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              lat: latitude,
+              lng: longitude
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          handleSelectLocation({
+            title: "Current Location",
+            address: `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+            lat: latitude,
+            lng: longitude
+          });
+        } finally {
+          setCurrentLocLoading(false);
+        }
+      },
+      (err) => {
+        setCurrentLocLoading(false);
+        toast.error("Failed to get location. Using default demo location.");
+        handleSelectLocation({
+          title: "Kaipally",
+          address: "Poonjar Thekkekara",
+          lat: 9.6824,
+          lng: 76.9083
+        });
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
+  };
+
+  const handleSaveNewAddress = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAddress.trim()) {
+      toast.error("Please enter an address");
+      return;
+    }
+    const newAddrItem = {
+      id: `saved-${Date.now()}`,
+      title: newTitle,
+      address: newAddress,
+      phone: newPhone,
+      distance: "0.1 km",
+      lat: 9.6824,
+      lng: 76.9083
+    };
+
+    const updated = [newAddrItem, ...savedAddresses];
+    setSavedAddresses(updated);
+    localStorage.setItem("grillgo.saved_addresses", JSON.stringify(updated));
+
+    // Reset form
+    setNewAddress("");
+    setShowAddForm(false);
+    toast.success("New address added successfully!");
+    
+    // Auto-select the newly added address
+    handleSelectLocation(newAddrItem);
+  };
+
+  const handleImportBlinkit = () => {
+    setImportingBlinkit(true);
+    setImportingStep("Connecting to Blinkit...");
+    
+    setTimeout(() => {
+      setImportingStep("Verifying phone number (+91-8590014578)...");
+      
+      setTimeout(() => {
+        setImportingStep("Fetching saved addresses from Blinkit cloud...");
+        
+        setTimeout(() => {
+          // Add address
+          const importedAddr = {
+            id: `blinkit-${Date.now()}`,
+            title: "Home (Imported)",
+            address: "padinjarekara house karoor PO pala, opposite of pala steels godawn, 686574, Lalam, India",
+            phone: "+91-8590014578",
+            distance: "18.3 km",
+            lat: 9.7104,
+            lng: 76.6830
+          };
+          
+          const updated = [importedAddr, ...savedAddresses];
+          setSavedAddresses(updated);
+          localStorage.setItem("grillgo.saved_addresses", JSON.stringify(updated));
+          
+          setImportingBlinkit(false);
+          setImportingStep("");
+          toast.success("Address imported from Blinkit successfully!");
+          
+          // Auto-select
+          handleSelectLocation(importedAddr);
+        }, 1200);
+      }, 1200);
+    }, 1000);
+  };
+
+  const handleDeleteAddress = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedAddresses.filter(a => a.id !== id);
+    setSavedAddresses(updated);
+    localStorage.setItem("grillgo.saved_addresses", JSON.stringify(updated));
+    toast.success("Address removed");
+  };
+
+  const handleShareAddress = (addressText: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(addressText);
+    toast.success("Address copied to clipboard!");
+  };
+
+  const filteredSavedAddresses = savedAddresses.filter(a => 
+    a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    a.address.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredRecentLocations = recentLocations.filter(r => 
+    r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    r.address.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F5EBD0] pb-6">
-      {/* Header with Curved Bottom */}
-      <header className="bg-[#7F011F] text-[#F5EBD0] px-5 pt-7 pb-8 rounded-b-[2.5rem] shadow-soft">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-1 text-[11px] font-bold tracking-wider opacity-85">
-              <MapPin className="h-3.5 w-3.5" />
-              DELIVER TO
-            </div>
-            <div className="mt-0.5 font-extrabold text-sm text-white">Home · 123 Street</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link 
-              to="/cart" 
-              aria-label="Cart" 
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
-            >
-              <ShoppingBag className="h-4.5 w-4.5" />
-              {count > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#EA580C] px-1 text-[9px] font-bold text-white shadow-sm">
-                  {count}
-                </span>
-              )}
-            </Link>
-            <Link to="/profile" className="h-9 w-9 overflow-hidden rounded-full border-2 border-white/40 shadow-sm">
-              <img
-                src="https://api.dicebear.com/9.x/initials/svg?seed=Me"
-                alt="Profile"
-                className="h-full w-full"
-              />
-            </Link>
-          </div>
-        </div>
-
-        {/* Welcome Text */}
-        <div className="mt-5">
-          <h1 className="text-2xl font-extrabold text-white leading-tight">Good Morning</h1>
-          <p className="text-xs font-semibold text-[#F5EBD0]/80 mt-0.5">Rise And Shine! It's Breakfast Time</p>
-        </div>
-
-        {/* Search & Filter */}
-        <div className="mt-5 flex gap-2">
-          <Link
-            to="/search"
-            className="flex-1 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-muted-foreground shadow-sm hover:bg-white/95 transition-all"
+      {/* Header */}
+      <header className="bg-[#0B0B0C] text-white px-5 pt-6 pb-6 shadow-md rounded-b-[2rem]">
+        <div className="flex items-center justify-between">
+          <button 
+            onClick={() => setShowLocationDrawer(true)} 
+            className="flex items-start gap-2.5 text-left focus:outline-none hover:opacity-90 transition-opacity max-w-[70%]"
           >
-            <SearchIcon className="h-4.5 w-4.5 text-[#7F011F]" />
-            <span className="text-xs font-medium text-[#8B7A6C]">Search dishes, snacks, burgers...</span>
-          </Link>
-          <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#7F011F] text-[#F5EBD0] shadow-sm hover:bg-[#630016] transition-all">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4.5 w-4.5">
-              <line x1="4" y1="21" x2="4" y2="14" />
-              <line x1="4" y1="10" x2="4" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12" y2="3" />
-              <line x1="20" y1="21" x2="20" y2="16" />
-              <line x1="20" y1="12" x2="20" y2="3" />
-              <line x1="1" y1="14" x2="7" y2="14" />
-              <line x1="9" y1="8" x2="15" y2="8" />
-              <line x1="17" y1="16" x2="23" y2="16" />
-            </svg>
+            {/* Red location pin with outline circle */}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EA4335]/15 border border-[#EA4335]/30">
+              <MapPin className="h-5 w-5 text-[#EA4335] fill-[#EA4335]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 font-bold text-[15px] text-white">
+                <span className="truncate">{selectedLocation.title}</span>
+                <ChevronDown className="h-4 w-4 text-white opacity-80 shrink-0" />
+              </div>
+              <div className="text-[11px] text-[#A1A1AA] line-clamp-1 font-medium mt-0.5">
+                {selectedLocation.address}
+              </div>
+            </div>
           </button>
+          
+          <div className="flex items-center gap-3">
+            {/* Wallet Icon */}
+            <button 
+              onClick={() => toast.info("Your Wallet Balance: ₹450.00 (GrillGo Rewards Active)")}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E33] bg-[#1E1E22] text-[#F5EBD0] hover:bg-[#2E2E33] transition-colors shrink-0"
+              aria-label="Wallet balance"
+            >
+              <Wallet className="h-4.5 w-4.5" />
+            </button>
+            
+            {/* Profile Initials Avatar */}
+            <Link 
+              to="/profile" 
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1A73E8] font-bold text-white text-sm shadow-md hover:bg-[#1557B0] transition-colors border border-white/10 shrink-0"
+            >
+              {userInitial}
+            </Link>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mt-4 flex gap-2">
+          <div className="relative flex-1">
+            <Link
+              to="/search"
+              className="w-full flex items-center justify-between rounded-full bg-[#1E1E22] border border-[#2E2E33] px-4.5 py-2.5 text-sm text-[#A1A1AA] hover:bg-[#2E2E33] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <SearchIcon className="h-4.5 w-4.5 text-[#A1A1AA]" />
+                <span className="text-xs font-medium text-[#8B7A6C]">Search "coffee"</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-px bg-[#2E2E33]" />
+                <Mic className="h-4 w-4 text-[#A1A1AA]" />
+              </div>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -242,6 +539,311 @@ function HomePage() {
 
       <WhatsAppFab />
       <BottomNav />
+
+      {/* --- LOCATION DRAWER --- */}
+      {showLocationDrawer && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/70 z-40 max-w-[28rem] mx-auto transition-opacity animate-in fade-in duration-200"
+            onClick={() => {
+              if (!importingBlinkit) setShowLocationDrawer(false);
+            }}
+          />
+          
+          {/* Drawer Container */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#121214] text-white rounded-t-[2.5rem] border-t border-[#1E1E22] shadow-2xl px-5 pt-6 pb-8 max-w-[28rem] mx-auto overflow-y-auto max-h-[85vh] transition-transform animate-in slide-in-from-bottom duration-300 no-scrollbar">
+            
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-[#1E1E22]">
+              <div className="flex items-center gap-2">
+                <ChevronDown 
+                  className="h-6 w-6 text-[#A1A1AA] cursor-pointer hover:text-white" 
+                  onClick={() => setShowLocationDrawer(false)}
+                />
+                <span className="font-bold text-lg text-white">Select a location</span>
+              </div>
+              <button 
+                onClick={() => setShowLocationDrawer(false)}
+                className="p-1 rounded-full hover:bg-[#1E1E22] transition-colors"
+              >
+                <X className="h-5 w-5 text-[#A1A1AA]" />
+              </button>
+            </div>
+
+            {/* Search Bar inside Drawer */}
+            <div className="mt-4 relative">
+              <SearchIcon className="absolute left-4.5 top-3.5 h-4.5 w-4.5 text-[#7E6C57]" />
+              <input
+                type="text"
+                placeholder="Search for area, street name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#1E1E22] border border-[#2E2E33] rounded-2xl pl-12 pr-4 py-3 text-sm text-white placeholder-[#7E6C57] focus:outline-none focus:border-[#7F011F]/50 transition-colors"
+              />
+            </div>
+
+            {/* Quick Actions List */}
+            <div className="mt-4 bg-[#1E1E22] rounded-2xl overflow-hidden border border-[#2E2E33]">
+              {/* Use Current Location */}
+              <button
+                type="button"
+                onClick={handleUseCurrentLocation}
+                disabled={currentLocLoading}
+                className="w-full flex items-center justify-between px-4.5 py-4 border-b border-[#2E2E33] hover:bg-[#2E2E33] transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EA4335]/15 border border-[#EA4335]/30 text-[#EA4335]">
+                    {currentLocLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Compass className="h-4.5 w-4.5 text-[#EA4335]" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-[#EA4335]">Use current location</div>
+                    <div className="text-[10px] text-[#A1A1AA] mt-0.5 line-clamp-1">
+                      {currentLocLoading ? "Detecting GPS location..." : "Kaipally, Poonjar Thekkekara"}
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-[#A1A1AA]" />
+              </button>
+
+              {/* Add Address */}
+              <button
+                type="button"
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="w-full flex items-center justify-between px-4.5 py-4 border-b border-[#2E2E33] hover:bg-[#2E2E33] transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EA4335]/15 border border-[#EA4335]/30 text-[#EA4335]">
+                    <Plus className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-[#EA4335]">Add Address</div>
+                    <div className="text-[10px] text-[#A1A1AA] mt-0.5">Enter custom address details manually</div>
+                  </div>
+                </div>
+                <ChevronRight className={`h-4 w-4 text-[#A1A1AA] transition-transform ${showAddForm ? "rotate-90" : ""}`} />
+              </button>
+
+              {/* Import from Blinkit */}
+              <button
+                type="button"
+                onClick={handleImportBlinkit}
+                disabled={importingBlinkit}
+                className="w-full flex items-center justify-between px-4.5 py-4 hover:bg-[#2E2E33] transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F7E135] text-black font-extrabold text-[8px] select-none uppercase tracking-tighter shrink-0">
+                    blinkit
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-[#EA4335]">Import addresses from Blinkit</div>
+                    <div className="text-[10px] text-[#A1A1AA] mt-0.5">Sync saved addresses with one tap</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-[#A1A1AA]" />
+              </button>
+            </div>
+
+            {/* Add Custom Address Form */}
+            {showAddForm && (
+              <form onSubmit={handleSaveNewAddress} className="mt-4 p-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] space-y-3">
+                <div className="text-xs font-bold text-white uppercase tracking-wider">Add Custom Address</div>
+                
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A1A1AA] uppercase">Address Label</label>
+                  <div className="flex gap-2 mt-1">
+                    {["Home", "Work", "Other"].map((l) => (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => setNewTitle(l)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                          newTitle === l 
+                            ? "bg-[#7F011F] text-white" 
+                            : "bg-[#2E2E33] text-[#A1A1AA] hover:bg-[#3E3E44]"
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A1A1AA] uppercase">Full Address</label>
+                  <textarea
+                    value={newAddress}
+                    onChange={(e) => setNewAddress(e.target.value)}
+                    placeholder="Enter flat/house no, street, locality..."
+                    className="w-full bg-[#2E2E33] border border-[#3E3E44] rounded-lg p-2.5 mt-1 text-xs text-white placeholder-[#7E6C57] focus:outline-none focus:border-[#7F011F]/50 resize-none h-16"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A1A1AA] uppercase">Phone Number</label>
+                  <input
+                    type="text"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="e.g. +91-8590014578"
+                    className="w-full bg-[#2E2E33] border border-[#3E3E44] rounded-lg p-2.5 mt-1 text-xs text-white placeholder-[#7E6C57] focus:outline-none focus:border-[#7F011F]/50"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 text-xs font-bold bg-[#7F011F] text-white rounded-xl hover:bg-[#630016] transition-colors"
+                  >
+                    Save & Use Address
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="px-4 py-2 text-xs font-bold bg-[#2E2E33] text-[#A1A1AA] rounded-xl hover:bg-[#3E3E44] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Blinkit Syncing Progress */}
+            {importingBlinkit && (
+              <div className="mt-4 p-5 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] flex flex-col items-center justify-center text-center space-y-3 animate-pulse">
+                <Loader2 className="h-6 w-6 animate-spin text-[#F7E135]" />
+                <div className="text-xs font-bold text-[#F7E135] uppercase tracking-wider">Blinkit Address Sync</div>
+                <div className="text-[11px] text-white font-medium">{importingStep}</div>
+              </div>
+            )}
+
+            {/* Saved Addresses Section */}
+            <div className="mt-6">
+              <div className="text-[10px] font-bold tracking-wider text-[#A1A1AA] uppercase mb-2">Saved Addresses</div>
+              <div className="space-y-3">
+                {filteredSavedAddresses.map((addr) => (
+                  <div
+                    key={addr.id}
+                    onClick={() => handleSelectLocation(addr)}
+                    className="flex gap-3 p-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] hover:border-[#7F011F]/30 hover:bg-[#2E2E33]/30 transition-all cursor-pointer text-left group"
+                  >
+                    {/* Left icon with distance badge */}
+                    <div className="flex flex-col items-center justify-center shrink-0 w-11">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2E2E33] text-[#A1A1AA] group-hover:text-white transition-colors">
+                        <Home className="h-5 w-5" />
+                      </div>
+                      <div className="text-[9px] text-[#A1A1AA] font-bold mt-1 tracking-tight">{addr.distance}</div>
+                    </div>
+
+                    {/* Middle details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-bold text-white leading-tight">{addr.title}</div>
+                      <div className="text-[11px] text-[#A1A1AA] mt-1.5 leading-relaxed font-medium break-words">
+                        {addr.address}
+                      </div>
+                      {addr.phone && (
+                        <div className="text-[10px] text-[#EA4335] mt-1.5 font-semibold">
+                          Phone number: {addr.phone}
+                        </div>
+                      )}
+
+                      {/* Actions row */}
+                      <div className="flex items-center gap-4.5 mt-3 pt-2 border-t border-[#2E2E33]">
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.info("More features coming soon!");
+                          }}
+                          className="p-1 rounded hover:bg-[#2E2E33] transition-colors"
+                          title="More options"
+                        >
+                          <MoreHorizontal className="h-4 w-4 text-[#A1A1AA] hover:text-white" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={(e) => handleShareAddress(addr.address, e)}
+                          className="p-1 rounded hover:bg-[#2E2E33] transition-colors"
+                          title="Share address"
+                        >
+                          <Share2 className="h-4 w-4 text-[#A1A1AA] hover:text-white" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={(e) => handleDeleteAddress(addr.id, e)}
+                          className="p-1 rounded hover:bg-[#2E2E33] transition-colors"
+                          title="Delete address"
+                        >
+                          <Trash2 className="h-4 w-4 text-[#A1A1AA] hover:text-[#EA4335]" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredSavedAddresses.length === 0 && (
+                  <div className="text-center text-xs text-[#A1A1AA] py-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33]">
+                    No matching saved addresses.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Locations Section */}
+            <div className="mt-6">
+              <div className="text-[10px] font-bold tracking-wider text-[#A1A1AA] uppercase mb-2">Recent Locations</div>
+              <div className="space-y-3">
+                {filteredRecentLocations.map((loc) => (
+                  <div
+                    key={loc.id}
+                    onClick={() => handleSelectLocation(loc)}
+                    className="flex gap-3 p-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] hover:border-[#7F011F]/30 hover:bg-[#2E2E33]/30 transition-all cursor-pointer text-left group"
+                  >
+                    {/* Left icon with distance badge */}
+                    <div className="flex flex-col items-center justify-center shrink-0 w-11">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2E2E33] text-[#A1A1AA] group-hover:text-white transition-colors">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div className="text-[9px] text-[#A1A1AA] font-bold mt-1 tracking-tight">{loc.distance}</div>
+                    </div>
+
+                    {/* Middle details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-bold text-white leading-tight">{loc.title}</div>
+                      <div className="text-[11px] text-[#A1A1AA] mt-1 line-clamp-2 font-medium">
+                        {loc.address}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {filteredRecentLocations.length === 0 && (
+                  <div className="text-center text-xs text-[#A1A1AA] py-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33]">
+                    No matching recent locations.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Powered by Google Footer */}
+            <div className="mt-8 flex items-center justify-center gap-1.5 opacity-60">
+              <span className="text-[10px] text-[#A1A1AA] font-semibold">powered by</span>
+              <span className="text-xs font-black tracking-tight text-white select-none">
+                <span className="text-[#4285F4]">G</span>
+                <span className="text-[#EA4335]">o</span>
+                <span className="text-[#FBBC05]">o</span>
+                <span className="text-[#4285F4]">g</span>
+                <span className="text-[#34A853]">l</span>
+                <span className="text-[#EA4335]">e</span>
+              </span>
+            </div>
+            
+          </div>
+        </>
+      )}
     </div>
   );
 }
