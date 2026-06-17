@@ -32,6 +32,8 @@ function CartPage() {
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locLoading, setLocLoading] = useState(false);
+  const [showAddressDrawer, setShowAddressDrawer] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
   // Load selected location from localStorage
   useEffect(() => {
@@ -45,6 +47,16 @@ function CartPage() {
           }
           if (loc && loc.lat && loc.lng) {
             setCoords({ lat: loc.lat, lng: loc.lng });
+          }
+        } catch (e) {}
+      }
+
+      const savedAddrs = localStorage.getItem("grillgo.saved_addresses");
+      if (savedAddrs) {
+        try {
+          const parsed = JSON.parse(savedAddrs);
+          if (Array.isArray(parsed)) {
+            setSavedAddresses(parsed);
           }
         } catch (e) {}
       }
@@ -198,10 +210,7 @@ function CartPage() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                const v = prompt("Delivery address", address);
-                if (v) setAddress(v);
-              }}
+              onClick={() => setShowAddressDrawer(true)}
               className="text-sm font-semibold text-brand"
             >
               Edit
@@ -341,6 +350,125 @@ function CartPage() {
           </button>
         </div>
       </div>
+
+      {/* --- SELECT ADDRESS DRAWER --- */}
+      {showAddressDrawer && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 z-40 max-w-[28rem] mx-auto transition-opacity animate-in fade-in duration-200"
+            onClick={() => setShowAddressDrawer(false)}
+          />
+          
+          {/* Drawer Container */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#121214] text-white rounded-t-[2.5rem] border-t border-[#1E1E22] shadow-2xl px-5 pt-6 pb-8 max-w-[28rem] mx-auto overflow-y-auto max-h-[85vh] transition-transform animate-in slide-in-from-bottom duration-300 no-scrollbar">
+            
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-[#1E1E22]">
+              <span className="font-bold text-lg text-white">Select Delivery Address</span>
+              <button 
+                type="button"
+                onClick={() => setShowAddressDrawer(false)}
+                className="p-1 rounded-full hover:bg-[#1E1E22] transition-colors"
+              >
+                <X className="h-5 w-5 text-[#A1A1AA]" />
+              </button>
+            </div>
+
+            {/* Custom Input Field */}
+            <div className="mt-4 space-y-2 text-left">
+              <label className="block text-[11px] font-bold text-[#A1A1AA] uppercase">Or enter address manually</label>
+              <textarea
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter flat/house no, street, locality..."
+                className="w-full bg-[#1E1E22] border border-[#2E2E33] rounded-2xl p-4 text-sm text-white placeholder-[#7E6C57] focus:outline-none focus:border-[#7F011F]/50 transition-colors resize-none h-24 font-medium leading-relaxed"
+              />
+            </div>
+
+            {/* Quick GPS button inside drawer */}
+            <button
+              type="button"
+              onClick={() => {
+                requestLocation();
+              }}
+              className="mt-3 w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl text-xs font-bold border bg-[#EA4335]/10 text-[#EA4335] border-[#EA4335]/20 hover:bg-[#EA4335]/20 transition-all"
+            >
+              <span>📍</span>
+              <span>{locLoading ? "Accessing GPS..." : "Detect & use current location via GPS"}</span>
+            </button>
+
+            {/* Saved Addresses list */}
+            {savedAddresses.length > 0 && (
+              <div className="mt-6 text-left">
+                <div className="text-[11px] font-bold tracking-wider text-[#A1A1AA] uppercase mb-2">Use Saved Address</div>
+                <div className="space-y-3">
+                  {savedAddresses.map((addr: any) => (
+                    <div
+                      key={addr.id}
+                      onClick={() => {
+                        setAddress(addr.address);
+                        if (addr.lat && addr.lng) {
+                          setCoords({ lat: addr.lat, lng: addr.lng });
+                        }
+                        setShowAddressDrawer(false);
+                        toast.success(`Address set to: ${addr.title}`);
+                        
+                        // Synchronize with home page select_location
+                        localStorage.setItem("grillgo.selected_location", JSON.stringify({
+                          title: addr.title,
+                          address: addr.address,
+                          fullAddress: addr.address,
+                          lat: addr.lat,
+                          lng: addr.lng
+                        }));
+                      }}
+                      className="flex gap-3 p-4 bg-[#1E1E22] rounded-2xl border border-[#2E2E33] hover:border-[#7F011F]/50 hover:bg-[#2E2E33]/30 transition-all cursor-pointer text-left group"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2E2E33] text-[#A1A1AA] group-hover:text-white transition-colors shrink-0">
+                        <Home className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-white leading-tight">{addr.title}</div>
+                        <div className="text-[11px] text-[#A1A1AA] mt-1.5 leading-relaxed font-medium break-words">
+                          {addr.address}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Confirm button */}
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!address.trim()) {
+                    toast.error("Please enter an address");
+                    return;
+                  }
+                  // Save back to local storage selected location as custom
+                  localStorage.setItem("grillgo.selected_location", JSON.stringify({
+                    title: address.split(",")[0] || "Custom Location",
+                    address: address,
+                    fullAddress: address,
+                    lat: coords?.lat || 9.6824,
+                    lng: coords?.lng || 76.9083
+                  }));
+                  setShowAddressDrawer(false);
+                  toast.success("Delivery address updated!");
+                }}
+                className="w-full py-4 text-sm font-bold bg-[#7F011F] text-white rounded-2xl hover:bg-[#630016] transition-colors shadow-lg"
+              >
+                Confirm Address
+              </button>
+            </div>
+
+          </div>
+        </>
+      )}
     </div>
   );
 }
