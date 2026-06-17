@@ -372,22 +372,23 @@ function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#F5EBD0] pb-6">
       {/* Header */}
-      <header className="bg-[#0B0B0C] text-white px-5 pt-6 pb-6 shadow-md rounded-b-[2rem]">
+      <header className="bg-[#7F011F] text-white px-5 pt-6 pb-6 shadow-md rounded-b-[2rem]">
         <div className="flex items-center justify-between">
           <button 
+            type="button"
             onClick={() => setShowLocationDrawer(true)} 
             className="flex items-start gap-2.5 text-left focus:outline-none hover:opacity-90 transition-opacity max-w-[70%]"
           >
-            {/* Red location pin with outline circle */}
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EA4335]/15 border border-[#EA4335]/30">
-              <MapPin className="h-5 w-5 text-[#EA4335] fill-[#EA4335]" />
+            {/* White location pin with outline circle */}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 border border-white/25">
+              <MapPin className="h-5 w-5 text-white fill-white/20" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1 font-bold text-[15px] text-white">
                 <span className="truncate">{selectedLocation.title}</span>
-                <ChevronDown className="h-4 w-4 text-white opacity-80 shrink-0" />
+                <ChevronDown className="h-4 w-4 text-[#F5EBD0] opacity-80 shrink-0" />
               </div>
-              <div className="text-[11px] text-[#A1A1AA] line-clamp-1 font-medium mt-0.5">
+              <div className="text-[11px] text-[#F5EBD0]/80 line-clamp-1 font-medium mt-0.5">
                 {selectedLocation.address}
               </div>
             </div>
@@ -396,8 +397,9 @@ function HomePage() {
           <div className="flex items-center gap-3">
             {/* Wallet Icon */}
             <button 
+              type="button"
               onClick={() => toast.info("Your Wallet Balance: ₹450.00 (GrillGo Rewards Active)")}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E33] bg-[#1E1E22] text-[#F5EBD0] hover:bg-[#2E2E33] transition-colors shrink-0"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-colors shrink-0"
               aria-label="Wallet balance"
             >
               <Wallet className="h-4.5 w-4.5" />
@@ -418,15 +420,15 @@ function HomePage() {
           <div className="relative flex-1">
             <Link
               to="/search"
-              className="w-full flex items-center justify-between rounded-full bg-[#1E1E22] border border-[#2E2E33] px-4.5 py-2.5 text-sm text-[#A1A1AA] hover:bg-[#2E2E33] transition-colors"
+              className="w-full flex items-center justify-between rounded-full bg-white px-4.5 py-2.5 text-sm text-muted-foreground hover:bg-white/95 transition-all shadow-sm"
             >
               <div className="flex items-center gap-3">
-                <SearchIcon className="h-4.5 w-4.5 text-[#A1A1AA]" />
+                <SearchIcon className="h-4.5 w-4.5 text-[#7F011F]" />
                 <span className="text-xs font-medium text-[#8B7A6C]">Search "coffee"</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-4 w-px bg-[#2E2E33]" />
-                <Mic className="h-4 w-4 text-[#A1A1AA]" />
+                <div className="h-4 w-px bg-[#E5D5B8]" />
+                <Mic className="h-4 w-4 text-[#7F011F]" />
               </div>
             </Link>
           </div>
