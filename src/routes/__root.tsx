@@ -180,6 +180,34 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("grillgo.saved_addresses");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter(item => item && item.id !== "mock-saved-1" && item.id !== "mock-saved-2" && !item.id?.startsWith("mock-"));
+            if (cleaned.length !== parsed.length) {
+              localStorage.setItem("grillgo.saved_addresses", JSON.stringify(cleaned));
+            }
+          }
+        }
+
+        const recents = localStorage.getItem("grillgo.recent_locations");
+        if (recents) {
+          const parsed = JSON.parse(recents);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter(item => item && item.id !== "mock-recent-1" && item.id !== "mock-recent-2" && !item.id?.startsWith("mock-"));
+            if (cleaned.length !== parsed.length) {
+              localStorage.setItem("grillgo.recent_locations", JSON.stringify(cleaned));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error cleaning localStorage:", e);
+      }
+    }
+
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         if (registrations.length > 0) {
