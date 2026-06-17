@@ -94,25 +94,28 @@ function HomePage() {
       const savedSel = localStorage.getItem("grillgo.selected_location");
       if (savedSel) {
         try {
-          setSelectedLocation(JSON.parse(savedSel));
+          const parsed = JSON.parse(savedSel);
+          if (parsed && typeof parsed === "object" && typeof parsed.title === "string" && typeof parsed.address === "string") {
+            setSelectedLocation(parsed);
+          } else {
+            localStorage.removeItem("grillgo.selected_location");
+          }
         } catch (e) {}
-      } else {
-        localStorage.setItem("grillgo.selected_location", JSON.stringify({
-          title: "Kaipally",
-          address: "Poonjar Thekkekara",
-          fullAddress: "Kaipally, Poonjar Thekkekara",
-          lat: 9.6824,
-          lng: 76.9083
-        }));
       }
 
       // 2. Saved addresses
       const savedAddrs = localStorage.getItem("grillgo.saved_addresses");
       if (savedAddrs) {
         try {
-          setSavedAddresses(JSON.parse(savedAddrs));
+          const parsed = JSON.parse(savedAddrs);
+          if (Array.isArray(parsed) && parsed.every(item => item && typeof item === "object" && typeof item.title === "string" && typeof item.address === "string")) {
+            setSavedAddresses(parsed);
+          } else {
+            localStorage.removeItem("grillgo.saved_addresses");
+          }
         } catch (e) {}
-      } else {
+      }
+      if (!localStorage.getItem("grillgo.saved_addresses")) {
         const defaults = [
           {
             id: "mock-saved-1",
@@ -141,9 +144,15 @@ function HomePage() {
       const savedRecents = localStorage.getItem("grillgo.recent_locations");
       if (savedRecents) {
         try {
-          setRecentLocations(JSON.parse(savedRecents));
+          const parsed = JSON.parse(savedRecents);
+          if (Array.isArray(parsed) && parsed.every(item => item && typeof item === "object" && typeof item.title === "string" && typeof item.address === "string")) {
+            setRecentLocations(parsed);
+          } else {
+            localStorage.removeItem("grillgo.recent_locations");
+          }
         } catch (e) {}
-      } else {
+      }
+      if (!localStorage.getItem("grillgo.recent_locations")) {
         const defaults = [
           {
             id: "mock-recent-1",
@@ -344,14 +353,20 @@ function HomePage() {
     toast.success("Address copied to clipboard!");
   };
 
-  const filteredSavedAddresses = savedAddresses.filter(a => 
-    a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.address.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSavedAddresses = (savedAddresses || []).filter(a => 
+    a && 
+    typeof a.title === "string" && 
+    typeof a.address === "string" && 
+    (a.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     a.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const filteredRecentLocations = recentLocations.filter(r => 
-    r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    r.address.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredRecentLocations = (recentLocations || []).filter(r => 
+    r && 
+    typeof r.title === "string" && 
+    typeof r.address === "string" && 
+    (r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     r.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
