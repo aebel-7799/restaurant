@@ -322,7 +322,7 @@ function RiderPortalPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                         <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-card/95 backdrop-blur px-3 py-2 rounded-xl flex items-center justify-between shadow-sm">
                           <span className="text-[10px] font-extrabold text-muted-foreground truncate max-w-[65%]">
-                            GPS: {o.latitude.toFixed(5)}, {o.longitude.toFixed(5)}
+                            GPS: {o.latitude ? Number(o.latitude).toFixed(5) : "---"}, {o.longitude ? Number(o.longitude).toFixed(5) : "---"}
                           </span>
                           <a
                             href={`https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`}

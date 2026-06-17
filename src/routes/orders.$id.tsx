@@ -121,7 +121,7 @@ function TrackPage() {
           <span className="text-[10px] font-bold text-foreground">Sharing Live Location with Rider</span>
         </div>
         <span className="text-[9px] text-muted-foreground font-semibold">
-          GPS: {order.latitude?.toFixed(4) ?? "---"}, {order.longitude?.toFixed(4) ?? "---"}
+          GPS: {order.latitude ? Number(order.latitude).toFixed(4) : "---"}, {order.longitude ? Number(order.longitude).toFixed(4) : "---"}
         </span>
       </div>
 
