@@ -131,28 +131,8 @@ function HomePage() {
         }
       }
       if (!localStorage.getItem("grillgo.saved_addresses")) {
-        const defaults = [
-          {
-            id: "mock-saved-1",
-            title: "Home",
-            address: "padinjarekara house karoor PO pala, opposite of pala steels godawn, 686574, Lalam, India",
-            phone: "+91-8590014578",
-            distance: "18.3 km",
-            lat: 9.7104,
-            lng: 76.6830
-          },
-          {
-            id: "mock-saved-2",
-            title: "Home",
-            address: "shamla hostel near freedom mart, Thrikkakara, Edappally, Kochi",
-            phone: "+91-8590014578",
-            distance: "68 km",
-            lat: 10.0261,
-            lng: 76.3125
-          }
-        ];
-        setSavedAddresses(defaults);
-        localStorage.setItem("grillgo.saved_addresses", JSON.stringify(defaults));
+        setSavedAddresses([]);
+        localStorage.setItem("grillgo.saved_addresses", JSON.stringify([]));
       }
 
       // 3. Recent locations
@@ -170,26 +150,8 @@ function HomePage() {
         }
       }
       if (!localStorage.getItem("grillgo.recent_locations")) {
-        const defaults = [
-          {
-            id: "mock-recent-1",
-            title: "Kaipally",
-            address: "Poonjar Thekkekara",
-            distance: "1.8 km",
-            lat: 9.6824,
-            lng: 76.9083
-          },
-          {
-            id: "mock-recent-2",
-            title: "Home",
-            address: "shamla hostel near freedom mart, Thrikkakara, Edappally, Kochi",
-            distance: "68 km",
-            lat: 10.0261,
-            lng: 76.3125
-          }
-        ];
-        setRecentLocations(defaults);
-        localStorage.setItem("grillgo.recent_locations", JSON.stringify(defaults));
+        setRecentLocations([]);
+        localStorage.setItem("grillgo.recent_locations", JSON.stringify([]));
       }
     }
   }, []);
