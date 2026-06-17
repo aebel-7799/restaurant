@@ -47,14 +47,18 @@ function ErrorComponent({ error }: { error: Error }) {
       const hasReloaded = sessionStorage.getItem("grillgo.chunk_reload");
       if (!hasReloaded) {
         sessionStorage.setItem("grillgo.chunk_reload", "true");
-        window.location.reload();
+        const url = new URL(window.location.href);
+        url.searchParams.set("u", Date.now().toString());
+        window.location.href = url.toString();
       }
     }
   }, [isChunkError]);
 
   const handleReload = () => {
     sessionStorage.removeItem("grillgo.chunk_reload");
-    window.location.reload();
+    const url = new URL(window.location.href);
+    url.searchParams.set("u", Date.now().toString());
+    window.location.href = url.toString();
   };
 
   return (
@@ -74,7 +78,7 @@ function ErrorComponent({ error }: { error: Error }) {
             Reload Page
           </button>
           <a
-            href="/"
+            href="/?u=home"
             className="inline-flex items-center justify-center rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground shadow-sm"
           >
             Go Home
