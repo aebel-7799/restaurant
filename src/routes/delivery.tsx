@@ -233,7 +233,7 @@ function RiderPortalPage() {
                       Ready: {new Date(o.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
-                  <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[9px] font-bold text-brand uppercase">
+                  <span className="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-0.5 text-[9px] font-extrabold text-purple-750 uppercase tracking-wider">
                     Packed
                   </span>
                 </div>
@@ -283,8 +283,12 @@ function RiderPortalPage() {
                     <span className="text-sm font-extrabold block">Ticket #{o.order_number}</span>
                     <span className="text-[10px] text-muted-foreground">Status: {o.order_status.replace(/_/g, " ")}</span>
                   </div>
-                  <span className="rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5 text-[9px] font-bold uppercase">
-                    Assigned
+                  <span className={`rounded-full border px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${
+                    o.order_status === "out_for_delivery"
+                      ? "bg-orange-50 text-orange-700 border-orange-200 animate-pulse"
+                      : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                  }`}>
+                    {o.order_status.replace(/_/g, " ")}
                   </span>
                 </div>
 
