@@ -63,13 +63,14 @@ function ErrorComponent({ error }: { error: Error }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center space-y-4">
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="text-sm text-muted-foreground">
-          {isChunkError
-            ? "A new update is available! Please refresh to load the latest version."
-            : error.message}
-        </p>
+      <div className="max-w-md w-full text-center space-y-4">
+        <h1 className="text-xl font-semibold text-brand">Something went wrong</h1>
+        <div className="text-left bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 overflow-auto max-h-60 max-w-full font-mono text-[10px] leading-relaxed whitespace-pre-wrap select-text">
+          <p className="font-bold mb-1.5 text-red-900 text-xs">
+            {error.name}: {error.message}
+          </p>
+          {error.stack}
+        </div>
         <div className="flex gap-3 justify-center items-center">
           <button
             onClick={handleReload}
