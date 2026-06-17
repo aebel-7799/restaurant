@@ -47,18 +47,65 @@ function ErrorComponent({ error }: { error: Error }) {
       const hasReloaded = sessionStorage.getItem("grillgo.chunk_reload");
       if (!hasReloaded) {
         sessionStorage.setItem("grillgo.chunk_reload", "true");
-        const url = new URL(window.location.href);
-        url.searchParams.set("u", Date.now().toString());
-        window.location.href = url.toString();
+        
+        // Clean SW and caches, then reload with cache-buster
+        if (typeof window !== "undefined") {
+          const reloadPage = () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("u", Date.now().toString());
+            window.location.href = url.toString();
+          };
+
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+              Promise.all(regs.map((r) => r.unregister())).finally(() => {
+                if ("caches" in window) {
+                  caches.keys().then((keys) => {
+                    Promise.all(keys.map((k) => caches.delete(k))).finally(() => {
+                      reloadPage();
+                    });
+                  });
+                } else {
+                  reloadPage();
+                }
+              });
+            });
+          } else {
+            reloadPage();
+          }
+        }
       }
     }
   }, [isChunkError]);
 
   const handleReload = () => {
     sessionStorage.removeItem("grillgo.chunk_reload");
-    const url = new URL(window.location.href);
-    url.searchParams.set("u", Date.now().toString());
-    window.location.href = url.toString();
+    
+    if (typeof window !== "undefined") {
+      const reloadPage = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("u", Date.now().toString());
+        window.location.href = url.toString();
+      };
+
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          Promise.all(regs.map((r) => r.unregister())).finally(() => {
+            if ("caches" in window) {
+              caches.keys().then((keys) => {
+                Promise.all(keys.map((k) => caches.delete(k))).finally(() => {
+                  reloadPage();
+                });
+              });
+            } else {
+              reloadPage();
+            }
+          });
+        });
+      } else {
+        reloadPage();
+      }
+    }
   };
 
   return (
@@ -131,6 +178,31 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        if (registrations.length > 0) {
+          console.warn("Active service workers found, unregistering for clean updates...");
+          Promise.all(
+            registrations.map((r) => r.unregister())
+          ).then(() => {
+            if ("caches" in window) {
+              caches.keys().then((keys) => {
+                Promise.all(keys.map((k) => caches.delete(k))).then(() => {
+                  console.log("Caches cleared. Reloading page...");
+                  window.location.reload();
+                });
+              });
+            } else {
+              window.location.reload();
+            }
+          });
+        }
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

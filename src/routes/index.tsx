@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { MapPin, Search as SearchIcon, Star, Plus, ShoppingBag, Heart, ChevronDown, Wallet, Mic, X, ChevronRight, Clock, Trash2, Share2, MoreHorizontal, Loader2, Compass } from "lucide-react";
+import { MapPin, Search as SearchIcon, Star, Plus, ShoppingBag, Heart, ChevronDown, Wallet, Mic, X, ChevronRight, Clock, Trash2, Share2, MoreHorizontal, Loader2, Compass, Home } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getFoodItems } from "@/lib/db.functions";
 import { BottomNav } from "@/components/bottom-nav";
